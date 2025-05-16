@@ -89,6 +89,43 @@ if uploaded_file:
     df_tagesmittel['Autokorr'] = df_tagesmittel['Stimmungswert'].rolling(window=win).apply(
         lambda x: pd.Series(x).autocorr(lag=1), raw=False)
 
+    # --- Entropie-Berechnung ---
+    shannon_entropies = []
+    apen_entropies = []
+    data = df_tagesmittel['Stimmungswert'].values
+    for i in range(len(data)):
+        if i < entropy_win - 1:
+            shannon_entropies.append(np.nan)
+            apen_entropies.append(np.nan)
+        else:
+            window = data[i - entropy_win + 1 : i + 1]
+            shannon_entropies.append(shannon_entropy(window))
+            std_win = np.std(window)
+            apen_entropies.append(approximate_entropy(window, m=2, r=0.2 * std_win if std_win > 0 else 0.2))
+    df_tagesmittel['Shannon Entropy'] = shannon_entropies
+    df_tagesmittel['Approximate Entropy'] = apen_entropies
+
+    # --- WARN-POPUP (Kritische Schwellen überschritten?) ---
+    warnungen = []
+
+    akt_var = df_tagesmittel['Varianz'].iloc[-1]
+    akt_aut = df_tagesmittel['Autokorr'].iloc[-1]
+    akt_shannon = df_tagesmittel['Shannon Entropy'].iloc[-1]
+    akt_apen = df_tagesmittel['Approximate Entropy'].iloc[-1]
+
+    if akt_var > varianz_kritschwelle(win):
+        warnungen.append(f"**Varianz kritisch:** {akt_var:.2f} > {varianz_kritschwelle(win):.2f} (Instabilität!)")
+    if akt_aut > autokorr_kritschwelle(win):
+        warnungen.append(f"**Autokorrelation kritisch:** {akt_aut:.2f} > {autokorr_kritschwelle(win):.2f} (Persistente Stimmungslage/Frühwarnsignal)")
+    if akt_shannon > shannon_kritschwelle(entropy_win):
+        warnungen.append(f"**Shannon Entropie kritisch:** {akt_shannon:.2f} > {shannon_kritschwelle(entropy_win):.2f} (Stimmung sehr chaotisch)")
+    if akt_apen > apen_kritschwelle(entropy_win):
+        warnungen.append(f"**Approximate Entropy kritisch:** {akt_apen:.2f} > {apen_kritschwelle(entropy_win):.2f} (Unregelmäßiger Verlauf)")
+
+    if warnungen:
+        st.error("🚨 **KRITISCHE WARNUNG:**\n\n" + "\n\n".join(warnungen))
+
+    # --- PLOTS ---
     st.subheader("Überlagerte Frühwarnsignale: Varianz vs. Autokorrelation")
     fig1, ax1 = plt.subplots(figsize=(12,5))
     ax1.plot(df_tagesmittel['Datum'], df_tagesmittel['Varianz'], color='gold', label=f'Rolling Varianz ({win} Tage)')
@@ -149,24 +186,7 @@ if uploaded_file:
         "Die blauen/grünen Baselines markieren die klinisch relevanten Schwellen (depressiv <2.5, hypoman/manisch >3.5)."
     )
 
-    # --- Entropie-Berechnung ---
     st.subheader("Shannon Entropie & Approximate Entropie (Stabilität der Stimmung)")
-    shannon_entropies = []
-    apen_entropies = []
-    data = df_tagesmittel['Stimmungswert'].values
-    for i in range(len(data)):
-        if i < entropy_win - 1:
-            shannon_entropies.append(np.nan)
-            apen_entropies.append(np.nan)
-        else:
-            window = data[i - entropy_win + 1 : i + 1]
-            shannon_entropies.append(shannon_entropy(window))
-            std_win = np.std(window)
-            apen_entropies.append(approximate_entropy(window, m=2, r=0.2 * std_win if std_win > 0 else 0.2))
-
-    df_tagesmittel['Shannon Entropy'] = shannon_entropies
-    df_tagesmittel['Approximate Entropy'] = apen_entropies
-
     fig4, ax4 = plt.subplots(figsize=(12,5))
     ax4.plot(df_tagesmittel['Datum'], df_tagesmittel['Shannon Entropy'], label='Shannon Entropie', color='blue')
     ax4.plot(df_tagesmittel['Datum'], df_tagesmittel['Approximate Entropy'], label='Approximate Entropy', color='red')
