@@ -75,6 +75,15 @@ if uploaded_file:
     fig1, ax1 = plt.subplots(figsize=(12,5))
     ax1.plot(df_tagesmittel['Datum'], df_tagesmittel['Varianz'], color='gold', label=f'Rolling Varianz ({win} Tage)')
     ax1.plot(df_tagesmittel['Datum'], df_tagesmittel['Autokorr'], color='orange', label=f'Rolling Autokorrelation (Lag 1, {win} Tage)')
+    # --- Baselines ---
+    ax1.axhline(0.5, color='red', linestyle='--', alpha=0.6)
+    ax1.text(df_tagesmittel['Datum'].iloc[5], 0.5+0.02, "Varianz Warnsignal (0.5)", color='red', fontsize=9, va='bottom')
+    ax1.axhline(1.0, color='crimson', linestyle=':', alpha=0.6)
+    ax1.text(df_tagesmittel['Datum'].iloc[5], 1.0+0.02, "Varianz kritisch (1.0)", color='crimson', fontsize=9, va='bottom')
+    ax1.axhline(0.6, color='blue', linestyle='--', alpha=0.6)
+    ax1.text(df_tagesmittel['Datum'].iloc[5], 0.6+0.02, "Autokorr Warnsignal (0.6)", color='blue', fontsize=9, va='bottom')
+    ax1.axhline(0.7, color='navy', linestyle=':', alpha=0.6)
+    ax1.text(df_tagesmittel['Datum'].iloc[5], 0.7+0.02, "Autokorr kritisch (0.7)", color='navy', fontsize=9, va='bottom')
     ax1.set_title("Überlagerte Frühwarnsignale: Varianz vs. Autokorrelation")
     ax1.set_xlabel("Datum")
     ax1.set_ylabel("Wert")
@@ -87,7 +96,7 @@ if uploaded_file:
         "Steigt die Varianz, gibt es größere Stimmungsschwankungen.\n"
         "• Die orange Linie zeigt die Autokorrelation – sie misst, wie stark deine Stimmung an aufeinanderfolgenden Tagen ähnlich bleibt. "
         "Ein starker Anstieg der Autokorrelation kann auf eine beginnende Phase (z. B. manisch oder depressiv) hindeuten. "
-        "Beide Werte gelten als mögliche 'Frühwarnsignale' für einen Stimmungsumschwung."
+        "Die farbigen Baselines zeigen, ab wann ein Wert als auffällig oder kritisch gilt (vgl. Studien)."
     )
 
     # --- Stimmungsglättung ---
@@ -104,6 +113,11 @@ if uploaded_file:
     ax2.plot(df_tagesmittel['Datum'], raw, color='gold', alpha=0.3, label="Tagesmittel (roh)")
     ax2.plot(df_tagesmittel['Datum'], sg, color='orange', label="Savitzky-Golay")
     ax2.plot(df_tagesmittel['Datum'], loess, color='crimson', label="LOESS")
+    # --- Baselines Stimmung ---
+    ax2.axhline(2.5, color='royalblue', linestyle='--', alpha=0.6)
+    ax2.text(df_tagesmittel['Datum'].iloc[5], 2.5+0.05, "Schwelle Depression (2.5)", color='royalblue', fontsize=9, va='bottom')
+    ax2.axhline(3.5, color='darkgreen', linestyle='--', alpha=0.6)
+    ax2.text(df_tagesmittel['Datum'].iloc[5], 3.5+0.05, "Schwelle Hypomanie (3.5)", color='darkgreen', fontsize=9, va='bottom')
     ax2.set_title("Stimmungsglättung")
     ax2.set_xlabel("Datum")
     ax2.set_ylabel("Stimmungswert")
@@ -114,7 +128,7 @@ if uploaded_file:
         "**Interpretation:**\n"
         "Diese Grafik zeigt den geglätteten Verlauf deiner Stimmung über die Zeit. "
         "Die goldene Linie ist der rohe Tagesmittelwert, die orange und rote Linien zeigen geglättete Trends (Savitzky-Golay und LOESS). "
-        "Geglättete Linien helfen, langfristige Muster und Trendwechsel leichter zu erkennen, während tägliche Ausreißer weniger Gewicht bekommen."
+        "Die blauen/grünen Baselines markieren die klinisch relevanten Schwellen (depressiv <2.5, hypoman/manisch >3.5)."
     )
 
     # --- Entropie-Berechnung ---
@@ -138,6 +152,15 @@ if uploaded_file:
     fig4, ax4 = plt.subplots(figsize=(12,5))
     ax4.plot(df_tagesmittel['Datum'], df_tagesmittel['Shannon Entropy'], label='Shannon Entropie', color='blue')
     ax4.plot(df_tagesmittel['Datum'], df_tagesmittel['Approximate Entropy'], label='Approximate Entropy', color='red')
+    # --- Baselines Entropie ---
+    ax4.axhline(1.5, color='gray', linestyle='--', alpha=0.6)
+    ax4.text(df_tagesmittel['Datum'].iloc[5], 1.5+0.03, "Shannon Warnsignal (1.5)", color='gray', fontsize=9, va='bottom')
+    ax4.axhline(2.0, color='black', linestyle=':', alpha=0.6)
+    ax4.text(df_tagesmittel['Datum'].iloc[5], 2.0+0.03, "Shannon kritisch (2.0)", color='black', fontsize=9, va='bottom')
+    ax4.axhline(0.5, color='purple', linestyle='--', alpha=0.6)
+    ax4.text(df_tagesmittel['Datum'].iloc[5], 0.5+0.03, "ApEn Warnsignal (0.5)", color='purple', fontsize=9, va='bottom')
+    ax4.axhline(0.8, color='magenta', linestyle=':', alpha=0.6)
+    ax4.text(df_tagesmittel['Datum'].iloc[5], 0.8+0.03, "ApEn kritisch (0.8)", color='magenta', fontsize=9, va='bottom')
     ax4.set_title(f"Stabilität der Stimmung: Shannon & Approximate Entropy ({entropy_win}-Tage-Fenster)")
     ax4.set_xlabel("Datum")
     ax4.set_ylabel("Entropie")
@@ -150,7 +173,7 @@ if uploaded_file:
         "Hohe Werte bedeuten viele unterschiedliche Stimmungen, niedrige Werte stehen für Gleichförmigkeit und Stabilität.\n"
         "• Die **Approximate Entropy** (rot) bewertet die Komplexität und Vorhersagbarkeit deines Stimmungsverlaufs. "
         "Niedrige Werte bedeuten wiederholbare, stabile Muster, hohe Werte zeigen chaotische, schwer vorhersagbare Verläufe.\n"
-        "Plötzliche Anstiege beider Werte können als Frühwarnsignal für eine beginnende Instabilität oder Episode dienen."
+        "Die Baselines markieren Wertebereiche, die laut Studienlage auffällig ('Warnsignal') oder kritisch sind."
     )
 
     # --- Automatische Stimmungsklassifikation für Balkendiagramm ---
