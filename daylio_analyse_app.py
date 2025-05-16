@@ -5,6 +5,24 @@ import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 from statsmodels.nonparametric.smoothers_lowess import lowess
 
+# --- ADAPTIVE SCHWELLENWERT-FUNKTIONEN ---
+def varianz_warnschwelle(win):
+    return max(0.2, 0.4 - 0.0015 * win)
+def varianz_kritschwelle(win):
+    return max(0.3, 0.5 - 0.001 * win)
+def autokorr_warnschwelle(win):
+    return 0.45 - 0.0005 * win
+def autokorr_kritschwelle(win):
+    return 0.65 - 0.0003 * win
+def shannon_warnschwelle(win):
+    return 1.3 + 0.001 * win
+def shannon_kritschwelle(win):
+    return 1.6 + 0.001 * win
+def apen_warnschwelle(win):
+    return 0.5 + 0.001 * win
+def apen_kritschwelle(win):
+    return 0.7 + 0.0015 * win
+
 # --- ENTROPIE-HILFSFUNKTIONEN ---
 def shannon_entropy(sequence):
     values, counts = np.unique(sequence, return_counts=True)
@@ -34,9 +52,9 @@ st.set_page_config(layout="wide", page_title="Daylio Stimmungsanalyse")
 st.title("Daylio Stimmungsanalyse & Frühwarnsignale")
 st.write("""
 Lade deinen Daylio-Export (CSV) hoch und erhalte die wichtigsten Visualisierungen:
-- Rolling Varianz & Autokorrelation (Frühwarnsignale)
+- Rolling Varianz & Autokorrelation (Frühwarnsignale, adaptive Schwellen)
 - Stimmungsglättung (Raw, Savitzky-Golay, LOESS)
-- Entropie-Maße als Stabilitätsindikator
+- Entropie-Maße als Stabilitätsindikator (adaptive Schwellen)
 - Verteilung der Stimmungs-Kategorien als Balkendiagramm
 """)
 
@@ -75,15 +93,15 @@ if uploaded_file:
     fig1, ax1 = plt.subplots(figsize=(12,5))
     ax1.plot(df_tagesmittel['Datum'], df_tagesmittel['Varianz'], color='gold', label=f'Rolling Varianz ({win} Tage)')
     ax1.plot(df_tagesmittel['Datum'], df_tagesmittel['Autokorr'], color='orange', label=f'Rolling Autokorrelation (Lag 1, {win} Tage)')
-    # --- Baselines ---
-    ax1.axhline(0.5, color='red', linestyle='--', alpha=0.6)
-    ax1.text(df_tagesmittel['Datum'].iloc[5], 0.5+0.02, "Varianz Warnsignal (0.5)", color='red', fontsize=9, va='bottom')
-    ax1.axhline(1.0, color='crimson', linestyle=':', alpha=0.6)
-    ax1.text(df_tagesmittel['Datum'].iloc[5], 1.0+0.02, "Varianz kritisch (1.0)", color='crimson', fontsize=9, va='bottom')
-    ax1.axhline(0.6, color='blue', linestyle='--', alpha=0.6)
-    ax1.text(df_tagesmittel['Datum'].iloc[5], 0.6+0.02, "Autokorr Warnsignal (0.6)", color='blue', fontsize=9, va='bottom')
-    ax1.axhline(0.7, color='navy', linestyle=':', alpha=0.6)
-    ax1.text(df_tagesmittel['Datum'].iloc[5], 0.7+0.02, "Autokorr kritisch (0.7)", color='navy', fontsize=9, va='bottom')
+    # --- Adaptive Baselines ---
+    ax1.axhline(varianz_warnschwelle(win), color='red', linestyle='--', alpha=0.6)
+    ax1.text(df_tagesmittel['Datum'].iloc[5], varianz_warnschwelle(win)+0.02, f"Varianz Warnsignal ({varianz_warnschwelle(win):.2f})", color='red', fontsize=9, va='bottom')
+    ax1.axhline(varianz_kritschwelle(win), color='crimson', linestyle=':', alpha=0.6)
+    ax1.text(df_tagesmittel['Datum'].iloc[5], varianz_kritschwelle(win)+0.02, f"Varianz kritisch ({varianz_kritschwelle(win):.2f})", color='crimson', fontsize=9, va='bottom')
+    ax1.axhline(autokorr_warnschwelle(win), color='blue', linestyle='--', alpha=0.6)
+    ax1.text(df_tagesmittel['Datum'].iloc[5], autokorr_warnschwelle(win)+0.02, f"Autokorr Warnsignal ({autokorr_warnschwelle(win):.2f})", color='blue', fontsize=9, va='bottom')
+    ax1.axhline(autokorr_kritschwelle(win), color='navy', linestyle=':', alpha=0.6)
+    ax1.text(df_tagesmittel['Datum'].iloc[5], autokorr_kritschwelle(win)+0.02, f"Autokorr kritisch ({autokorr_kritschwelle(win):.2f})", color='navy', fontsize=9, va='bottom')
     ax1.set_title("Überlagerte Frühwarnsignale: Varianz vs. Autokorrelation")
     ax1.set_xlabel("Datum")
     ax1.set_ylabel("Wert")
@@ -96,7 +114,7 @@ if uploaded_file:
         "Steigt die Varianz, gibt es größere Stimmungsschwankungen.\n"
         "• Die orange Linie zeigt die Autokorrelation – sie misst, wie stark deine Stimmung an aufeinanderfolgenden Tagen ähnlich bleibt. "
         "Ein starker Anstieg der Autokorrelation kann auf eine beginnende Phase (z. B. manisch oder depressiv) hindeuten. "
-        "Die farbigen Baselines zeigen, ab wann ein Wert als auffällig oder kritisch gilt (vgl. Studien)."
+        "Die Baselines passen sich automatisch an die Fenstergröße an und markieren empirisch fundierte Warn- und Kritisch-Schwellen."
     )
 
     # --- Stimmungsglättung ---
@@ -113,7 +131,7 @@ if uploaded_file:
     ax2.plot(df_tagesmittel['Datum'], raw, color='gold', alpha=0.3, label="Tagesmittel (roh)")
     ax2.plot(df_tagesmittel['Datum'], sg, color='orange', label="Savitzky-Golay")
     ax2.plot(df_tagesmittel['Datum'], loess, color='crimson', label="LOESS")
-    # --- Baselines Stimmung ---
+    # --- Baselines Stimmung (fix, da nicht fensterabhängig) ---
     ax2.axhline(2.5, color='royalblue', linestyle='--', alpha=0.6)
     ax2.text(df_tagesmittel['Datum'].iloc[5], 2.5+0.05, "Schwelle Depression (2.5)", color='royalblue', fontsize=9, va='bottom')
     ax2.axhline(3.5, color='darkgreen', linestyle='--', alpha=0.6)
@@ -152,15 +170,15 @@ if uploaded_file:
     fig4, ax4 = plt.subplots(figsize=(12,5))
     ax4.plot(df_tagesmittel['Datum'], df_tagesmittel['Shannon Entropy'], label='Shannon Entropie', color='blue')
     ax4.plot(df_tagesmittel['Datum'], df_tagesmittel['Approximate Entropy'], label='Approximate Entropy', color='red')
-    # --- Baselines Entropie ---
-    ax4.axhline(1.5, color='gray', linestyle='--', alpha=0.6)
-    ax4.text(df_tagesmittel['Datum'].iloc[5], 1.5+0.03, "Shannon Warnsignal (1.5)", color='gray', fontsize=9, va='bottom')
-    ax4.axhline(2.0, color='black', linestyle=':', alpha=0.6)
-    ax4.text(df_tagesmittel['Datum'].iloc[5], 2.0+0.03, "Shannon kritisch (2.0)", color='black', fontsize=9, va='bottom')
-    ax4.axhline(0.5, color='purple', linestyle='--', alpha=0.6)
-    ax4.text(df_tagesmittel['Datum'].iloc[5], 0.5+0.03, "ApEn Warnsignal (0.5)", color='purple', fontsize=9, va='bottom')
-    ax4.axhline(0.8, color='magenta', linestyle=':', alpha=0.6)
-    ax4.text(df_tagesmittel['Datum'].iloc[5], 0.8+0.03, "ApEn kritisch (0.8)", color='magenta', fontsize=9, va='bottom')
+    # --- Adaptive Baselines Entropie ---
+    ax4.axhline(shannon_warnschwelle(entropy_win), color='gray', linestyle='--', alpha=0.6)
+    ax4.text(df_tagesmittel['Datum'].iloc[5], shannon_warnschwelle(entropy_win)+0.03, f"Shannon Warnsignal ({shannon_warnschwelle(entropy_win):.2f})", color='gray', fontsize=9, va='bottom')
+    ax4.axhline(shannon_kritschwelle(entropy_win), color='black', linestyle=':', alpha=0.6)
+    ax4.text(df_tagesmittel['Datum'].iloc[5], shannon_kritschwelle(entropy_win)+0.03, f"Shannon kritisch ({shannon_kritschwelle(entropy_win):.2f})", color='black', fontsize=9, va='bottom')
+    ax4.axhline(apen_warnschwelle(entropy_win), color='purple', linestyle='--', alpha=0.6)
+    ax4.text(df_tagesmittel['Datum'].iloc[5], apen_warnschwelle(entropy_win)+0.03, f"ApEn Warnsignal ({apen_warnschwelle(entropy_win):.2f})", color='purple', fontsize=9, va='bottom')
+    ax4.axhline(apen_kritschwelle(entropy_win), color='magenta', linestyle=':', alpha=0.6)
+    ax4.text(df_tagesmittel['Datum'].iloc[5], apen_kritschwelle(entropy_win)+0.03, f"ApEn kritisch ({apen_kritschwelle(entropy_win):.2f})", color='magenta', fontsize=9, va='bottom')
     ax4.set_title(f"Stabilität der Stimmung: Shannon & Approximate Entropy ({entropy_win}-Tage-Fenster)")
     ax4.set_xlabel("Datum")
     ax4.set_ylabel("Entropie")
@@ -173,7 +191,7 @@ if uploaded_file:
         "Hohe Werte bedeuten viele unterschiedliche Stimmungen, niedrige Werte stehen für Gleichförmigkeit und Stabilität.\n"
         "• Die **Approximate Entropy** (rot) bewertet die Komplexität und Vorhersagbarkeit deines Stimmungsverlaufs. "
         "Niedrige Werte bedeuten wiederholbare, stabile Muster, hohe Werte zeigen chaotische, schwer vorhersagbare Verläufe.\n"
-        "Die Baselines markieren Wertebereiche, die laut Studienlage auffällig ('Warnsignal') oder kritisch sind."
+        "Die adaptiven Baselines markieren Wertebereiche, die laut Studienlage auffällig ('Warnsignal') oder kritisch sind."
     )
 
     # --- Automatische Stimmungsklassifikation für Balkendiagramm ---
