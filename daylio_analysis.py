@@ -162,8 +162,7 @@ if uploaded_file:
         file_name="haeufigkeitsverteilung.png"
     )
     st.caption("""
-        **Interpretation:**  
-        Dieses Histogramm zeigt die Verteilung deiner täglichen Stimmungsmittelwerte in feinen 0.5er-Schritten.  
+        **Interpretation:** Dieses Histogramm zeigt die Verteilung deiner täglichen Stimmungsmittelwerte in feinen 0.5er-Schritten.  
         Du erkennst auf einen Blick, welche Stimmungslagen im Zeitverlauf besonders häufig waren und ob es Schwerpunkte im depressiven, euthymen oder (hypo)manischen Bereich gibt.
         """)
 
@@ -209,8 +208,7 @@ if uploaded_file:
         file_name="mood_zeitverlauf.png"
     )
     st.caption("""
-        **Interpretation:**  
-        In diesem Diagramm siehst du deinen gesamten Mood-Verlauf, wobei jeder Punkt nach seiner Stimmungskategorie (je 0.5 Punkte) eingefärbt ist.  
+        **Interpretation:** In diesem Diagramm siehst du deinen gesamten Mood-Verlauf, wobei jeder Punkt nach seiner Stimmungskategorie (je 0.5 Punkte) eingefärbt ist.  
         So erkennst du auf einen Blick stabile Phasen, schnelle Stimmungswechsel, und wie lange bestimmte Zustände anhalten.
         Die horizontale Linien markieren die Übergänge zwischen den wichtigsten Stimmungsklassen.
         """)
