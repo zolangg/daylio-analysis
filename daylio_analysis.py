@@ -53,10 +53,10 @@ st.title("Daylio Stimmungsanalyse & Frühwarnsignale")
 
 st.write("""
 Lade deinen Daylio-Export (CSV) hoch und erhalte die wichtigsten Visualisierungen:
-- Rolling Varianz & Autokorrelation (Frühwarnsignale, adaptive Schwellen)
-- Stimmungsglättung (Raw, Savitzky-Golay, LOESS)
-- Entropie-Maße als Stabilitätsindikator (adaptive Schwellen)
 - Häufigkeitsverteilung in 0.5er-Schritten und farbcodierter Mood Zeitverlauf
+- Stimmungsglättung (Raw, Savitzky-Golay, LOESS)
+- Rolling Varianz & Autokorrelation (Frühwarnsignale, adaptive Schwellen)
+- Entropie-Maße als Stabilitätsindikator (adaptive Schwellen)
 """)
 
 uploaded_file = st.file_uploader("Daylio CSV-Datei hochladen", type=["csv"])
