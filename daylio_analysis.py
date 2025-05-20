@@ -256,7 +256,7 @@ if uploaded_file:
     )
     st.caption("""
         **Interpretation:**
-        Die orange Linie ist die Savitzky-Golay-Glättung, die rote Linie die LOESS-Glättung (empfohlen für starke Glättung, z. B. Fraktion 0.08).
+        Die orange Linie ist die **Savitzky-Golay-Glättung**, die rote Linie die **LOESS-Glättung**.
         Die feinen grauen Linien markieren die 0.5er-Schritte zwischen den Stimmungszonen.
         """)
 
@@ -286,10 +286,10 @@ if uploaded_file:
     st.download_button("Download Plot 1 als PNG", data=fig1_to_bytes(fig1), file_name="fruehwarnsignale.png")
     st.caption("""
         **Interpretation:**
-        Die goldene Linie zeigt, wie stark deine Stimmung über ein gleitendes Fenster schwankt (Varianz).
-        Steigt die Varianz, gibt es größere Stimmungsschwankungen.
-        Die orange Linie zeigt die Autokorrelation – sie misst, wie stark deine Stimmung an aufeinanderfolgenden Tagen ähnlich bleibt.
-        Ein starker Anstieg der Autokorrelation kann auf eine beginnende Phase (z. B. manisch oder depressiv) hindeuten.
+        Die goldene Linie zeigt, wie stark deine Stimmung über ein gleitendes Fenster schwankt (**Varianz**).
+        Steigt die **Varianz**, gibt es größere Stimmungsschwankungen.
+        Die orange Linie zeigt die **Autokorrelation** – sie misst, wie stark deine Stimmung an aufeinanderfolgenden Tagen ähnlich bleibt.
+        Ein starker Anstieg der **Autokorrelation** kann auf eine beginnende Phase (z. B. manisch oder depressiv) hindeuten.
         Die Baselines passen sich automatisch an die Fenstergröße an und markieren empirisch fundierte Warn- und Kritisch-Schwellen.
         """)
 
