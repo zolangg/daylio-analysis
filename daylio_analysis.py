@@ -288,9 +288,9 @@ if uploaded_file:
     st.download_button("Download Plot 1 als PNG", data=fig1_to_bytes(fig1), file_name="fruehwarnsignale.png")
     st.caption(
         "**Interpretation:**\n"
-        "• Die goldene Linie zeigt, wie stark deine Stimmung über ein gleitendes Fenster schwankt (Varianz). "
+        "Die goldene Linie zeigt, wie stark deine Stimmung über ein gleitendes Fenster schwankt (Varianz). "
         "Steigt die Varianz, gibt es größere Stimmungsschwankungen.\n"
-        "• Die orange Linie zeigt die Autokorrelation – sie misst, wie stark deine Stimmung an aufeinanderfolgenden Tagen ähnlich bleibt. "
+        "Die orange Linie zeigt die Autokorrelation – sie misst, wie stark deine Stimmung an aufeinanderfolgenden Tagen ähnlich bleibt. "
         "Ein starker Anstieg der Autokorrelation kann auf eine beginnende Phase (z. B. manisch oder depressiv) hindeuten. "
         "Die Baselines passen sich automatisch an die Fenstergröße an und markieren empirisch fundierte Warn- und Kritisch-Schwellen."
     )
@@ -320,9 +320,9 @@ if uploaded_file:
     st.download_button("Download Plot 3 als PNG", data=fig1_to_bytes(fig4), file_name="entropie.png")
     st.caption(
         "**Interpretation:**\n"
-        "• Die **Shannon Entropie** (blau) misst, wie unterschiedlich und unvorhersehbar deine Stimmung im Zeitfenster ist. "
+        "Die **Shannon Entropie** (blau) misst, wie unterschiedlich und unvorhersehbar deine Stimmung im Zeitfenster ist. "
         "Hohe Werte bedeuten viele unterschiedliche Stimmungen, niedrige Werte stehen für Gleichförmigkeit und Stabilität.\n"
-        "• Die **Approximate Entropy** (rot) bewertet die Komplexität und Vorhersagbarkeit deines Stimmungsverlaufs. "
+        "Die **Approximate Entropy** (rot) bewertet die Komplexität und Vorhersagbarkeit deines Stimmungsverlaufs. "
         "Niedrige Werte bedeuten wiederholbare, stabile Muster, hohe Werte zeigen chaotische, schwer vorhersagbare Verläufe.\n"
         "Die adaptiven Baselines markieren Wertebereiche, die laut Studienlage auffällig ('Warnsignal') oder kritisch sind."
     )
