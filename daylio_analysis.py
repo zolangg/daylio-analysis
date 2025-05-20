@@ -415,12 +415,10 @@ if uploaded_file:
                 data=fig1_to_bytes(fig2),
                 file_name="subtle_mixed_markov_network.png"
             )
-    
-        st.caption("""
-        Diese Plots zeigen nur die Phasen, in denen schon moderate oder leichte, aber häufige Sprünge (ΔMood ≥1.5) auftraten
-        {filt_text}  
-        Du erkennst auch subklinisch instabile Abschnitte und kannst vergleichen, wie sich die Übergänge von der Gesamtmatrix unterscheiden.
-        """.format(filt_text="und die Entropie im Fenster erhöht war." if use_entropy else ""))
+    st.caption("""
+    **Interpretation**
+    Diese Plots zeigen nur Phasen mit häufigen Stimmungssprüngen (ΔMood ≥1.5){}, also potenziell instabilen oder gemischten Episoden. Viele diagonalfremde Übergänge („Low“↔„High“) und breite Zeitfenster gelten als Warnsignal für destabilisierte Verläufe. Vergleiche die Muster mit deiner Gesamtmatrix, um instabile Abschnitte sichtbar zu machen.
+    """.format(" und erhöhter Entropie" if use_entropy else ""))
     else:
         st.info("Es wurden zu wenige Mixed-State-Tage gefunden. Das spricht weiterhin für einen insgesamt stabilen Verlauf. "
                 "Senke ggf. die Schwellen oder verlängere den Zeitraum.")
