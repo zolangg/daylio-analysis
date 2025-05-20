@@ -401,38 +401,37 @@ if uploaded_file:
     Die linke Heatmap zeigt die Wahrscheinlichkeit, von jedem Zustand in einen anderen zu wechseln.  
     Der rechte Netzwerkplot zeigt die wichtigsten Übergänge als Pfeile. Dicke Pfeile und große Zahlen markieren häufige Übergänge.
     """)
+        
+    # Subthreshold Mixed-State Detection
+    st.header("Subtile Mixed-Episoden (inkl. leichte Instabilität)")
     
-    st.header("Analyse gemischter Episoden")
+    window_days = st.sidebar.slider("Suchfenster (Tage)", min_value=3, max_value=30, value=5)
+    min_jumps = st.sidebar.slider("Minimale Sprunganzahl (Diff ≥1.5)", min_value=1, max_value=window_days, value=2)
+    use_entropy = st.sidebar.checkbox("Zusätzlich Mindest-Entropie filtern?", value=False)
+    min_entropy = st.sidebar.slider("Mindest-Shannon-Entropie (optional)", min_value=1.0, max_value=2.5, value=1.5, step=0.05)
     
-    # 1. Parameter für die Mixed-State-Erkennung
-    window_days = st.sidebar.slider("Mixed-State Suchfenster (Tage)", min_value=3, max_value=30, value=7)
-    min_jumps = st.sidebar.slider("Minimale Sprunganzahl im Fenster (Diff ≥2)", min_value=2, max_value=window_days, value=3)
-    
-    # 2. Mood-Differenz berechnen
     mood_series = df_tagesmittel['Stimmungswert'].values
     dates = df_tagesmittel['Datum'].values
+    entropies = df_tagesmittel['Shannon Entropy'].values if "Shannon Entropy" in df_tagesmittel.columns else np.zeros_like(mood_series)
     jump_indices = []
     
-    # Sliding-Window: Suche Abschnitte mit Sprüngen ≥2
+    # Sliding-Window: Suche Abschnitte mit Sprüngen ≥1.5 und optional hoher Entropie
     for i in range(len(mood_series) - window_days + 1):
         window = mood_series[i:i+window_days]
-        jumps = np.sum(np.abs(np.diff(window)) >= 2)
-        if jumps >= min_jumps:
-            # Markiere alle Tage im Fenster als "potenziell gemischt"
+        window_entropy = entropies[i+window_days-1] if len(entropies) > 0 else 0
+        jumps = np.sum(np.abs(np.diff(window)) >= 1.5)
+        if jumps >= min_jumps and (not use_entropy or window_entropy >= min_entropy):
             jump_indices.extend(list(range(i, i+window_days)))
     
-    # Eindeutig machen
     mixed_indices = sorted(set(jump_indices))
     is_mixed = np.zeros(len(mood_series), dtype=bool)
     is_mixed[mixed_indices] = True
     
-    # Filter für Mixed-Phasen
     df_mixed = df_tagesmittel.iloc[is_mixed].reset_index(drop=True)
-    
-    st.write(f"**Anzahl Mixed-Episode-Tage gefunden:** {df_mixed.shape[0]} ({df_mixed['Datum'].min().date()} bis {df_mixed['Datum'].max().date()})")
+    st.write(f"**Tage in subtilen Mixed-Episoden:** {df_mixed.shape[0]}")
     
     if df_mixed.shape[0] >= 5:
-        # 3. Markov-Analyse NUR für Mixed-Abschnitte
+        # Markov-Analyse nur für Mixed-Abschnitte
         mood_vals = df_mixed['Stimmungswert'].round().astype(int).clip(1, 5)
         mood_labels = ['Super Low', 'Low', 'Euthym', 'High', 'Super High']
         mood_idx = mood_vals - 1
@@ -448,23 +447,23 @@ if uploaded_file:
         col1, col2 = st.columns(2)
     
         with col1:
-            st.markdown("**Markov-Übergangsmatrix (Mixed-Phasen)**")
+            st.markdown("**Markov-Übergangsmatrix (Subtile Mixed-Phasen)**")
             fig, ax = plt.subplots(figsize=(5, 5))
             sns.heatmap(trans_prob, annot=True, cmap="YlOrRd", fmt=".2f",
                         xticklabels=mood_labels, yticklabels=mood_labels, cbar_kws={'label': 'Wahrscheinlichkeit'}, ax=ax)
             ax.set_xlabel("→ Nächster Zustand")
             ax.set_ylabel("Aktueller Zustand")
-            ax.set_title("Mixed-State Übergangsmatrix")
+            ax.set_title("Subtile Mixed-State Übergangsmatrix")
             plt.tight_layout()
             st.pyplot(fig)
             st.download_button(
-                "Download Mixed-Matrix als PNG",
+                "Download Subtile Mixed-Matrix als PNG",
                 data=fig1_to_bytes(fig),
-                file_name="mixed_markov_matrix.png"
+                file_name="subtle_mixed_markov_matrix.png"
             )
     
         with col2:
-            st.markdown("**Markov State Diagram (Mixed-Phasen)**")
+            st.markdown("**Markov State Diagram (Subtile Mixed-Phasen)**")
             G = nx.DiGraph()
             for i, mood in enumerate(mood_labels):
                 G.add_node(mood)
@@ -482,24 +481,24 @@ if uploaded_file:
             nx.draw_networkx_edges(G, pos, width=weights, arrowsize=22, arrowstyle='-|>', ax=ax2)
             nx.draw_networkx_edge_labels(G, pos,
                 edge_labels={(u, v): f"{G[u][v]['weight']:.2f}" for u, v in edges}, font_size=10, ax=ax2)
-            ax2.set_title("Mixed-State Diagram")
+            ax2.set_title("Subtile Mixed-State Diagram")
             ax2.axis('off')
             plt.tight_layout()
             st.pyplot(fig2)
             st.download_button(
-                "Download Mixed-Netzwerk als PNG",
+                "Download Subtile Mixed-Netzwerk als PNG",
                 data=fig1_to_bytes(fig2),
-                file_name="mixed_markov_network.png"
+                file_name="subtle_mixed_markov_network.png"
             )
     
         st.caption("""
-        Die Mixed-State Matrix und das Netzwerk zeigen nur die Übergänge während automatisch detektierter, potentiell gemischter Episoden
-        (definiert durch mindestens {min_jumps} Sprünge ≥2 Stufen in einem {window_days}-Tage-Fenster).
-        Vergleiche die diagonalfremden Wahrscheinlichkeiten (z.B. Low→High, High→Low) mit den Literaturwerten.
-        """)
-    
+        Diese Plots zeigen nur die Phasen, in denen schon moderate oder leichte, aber häufige Sprünge (ΔMood ≥1.5) auftraten
+        {filt_text}  
+        Du erkennst auch subklinisch instabile Abschnitte und kannst vergleichen, wie sich die Übergänge von der Gesamtmatrix unterscheiden.
+        """.format(filt_text="und die Entropie im Fenster erhöht war." if use_entropy else ""))
     else:
-        st.info("Es wurden zu wenige Mixed-State-Tage gefunden, um eine aussagekräftige Matrix zu erstellen. Probiere es mit einem kleineren Fenster oder weniger Sprüngen.")
+        st.info("Es wurden zu wenige Mixed-State-Tage gefunden. Das spricht weiterhin für einen insgesamt stabilen Verlauf. "
+                "Senke ggf. die Schwellen oder verlängere den Zeitraum.")
     
     # Optional: Markiere im Zeitverlauf alle Mixed-Tage farbig
     fig, ax = plt.subplots(figsize=(12, 2))
