@@ -401,5 +401,115 @@ if uploaded_file:
     Die linke Heatmap zeigt die Wahrscheinlichkeit, von jedem Zustand in einen anderen zu wechseln.  
     Der rechte Netzwerkplot zeigt die wichtigsten Übergänge als Pfeile. Dicke Pfeile und große Zahlen markieren häufige Übergänge.
     """)
+    
+    st.header("Analyse gemischter Episoden")
+    
+    # 1. Parameter für die Mixed-State-Erkennung
+    window_days = st.sidebar.slider("Mixed-State Suchfenster (Tage)", min_value=3, max_value=30, value=7)
+    min_jumps = st.sidebar.slider("Minimale Sprunganzahl im Fenster (Diff ≥2)", min_value=2, max_value=window_days, value=3)
+    
+    # 2. Mood-Differenz berechnen
+    mood_series = df_tagesmittel['Stimmungswert'].values
+    dates = df_tagesmittel['Datum'].values
+    jump_indices = []
+    
+    # Sliding-Window: Suche Abschnitte mit Sprüngen ≥2
+    for i in range(len(mood_series) - window_days + 1):
+        window = mood_series[i:i+window_days]
+        jumps = np.sum(np.abs(np.diff(window)) >= 2)
+        if jumps >= min_jumps:
+            # Markiere alle Tage im Fenster als "potenziell gemischt"
+            jump_indices.extend(list(range(i, i+window_days)))
+    
+    # Eindeutig machen
+    mixed_indices = sorted(set(jump_indices))
+    is_mixed = np.zeros(len(mood_series), dtype=bool)
+    is_mixed[mixed_indices] = True
+    
+    # Filter für Mixed-Phasen
+    df_mixed = df_tagesmittel.iloc[is_mixed].reset_index(drop=True)
+    
+    st.write(f"**Anzahl Mixed-Episode-Tage gefunden:** {df_mixed.shape[0]} ({df_mixed['Datum'].min().date()} bis {df_mixed['Datum'].max().date()})")
+    
+    if df_mixed.shape[0] >= 5:
+        # 3. Markov-Analyse NUR für Mixed-Abschnitte
+        mood_vals = df_mixed['Stimmungswert'].round().astype(int).clip(1, 5)
+        mood_labels = ['Super Low', 'Low', 'Euthym', 'High', 'Super High']
+        mood_idx = mood_vals - 1
+        n_states = len(mood_labels)
+        transitions = list(zip(mood_idx[:-1], mood_idx[1:]))
+        trans_matrix = np.zeros((n_states, n_states), dtype=int)
+        for i, j in transitions:
+            if 0 <= i < n_states and 0 <= j < n_states:
+                trans_matrix[i, j] += 1
+        with np.errstate(invalid='ignore'):
+            trans_prob = trans_matrix / trans_matrix.sum(axis=1, keepdims=True)
+    
+        col1, col2 = st.columns(2)
+    
+        with col1:
+            st.markdown("**Markov-Übergangsmatrix (Mixed-Phasen)**")
+            fig, ax = plt.subplots(figsize=(5, 5))
+            sns.heatmap(trans_prob, annot=True, cmap="YlOrRd", fmt=".2f",
+                        xticklabels=mood_labels, yticklabels=mood_labels, cbar_kws={'label': 'Wahrscheinlichkeit'}, ax=ax)
+            ax.set_xlabel("→ Nächster Zustand")
+            ax.set_ylabel("Aktueller Zustand")
+            ax.set_title("Mixed-State Übergangsmatrix")
+            plt.tight_layout()
+            st.pyplot(fig)
+            st.download_button(
+                "Download Mixed-Matrix als PNG",
+                data=fig1_to_bytes(fig),
+                file_name="mixed_markov_matrix.png"
+            )
+    
+        with col2:
+            st.markdown("**Markov State Diagram (Mixed-Phasen)**")
+            G = nx.DiGraph()
+            for i, mood in enumerate(mood_labels):
+                G.add_node(mood)
+            for i in range(n_states):
+                for j in range(n_states):
+                    prob = trans_prob[i, j]
+                    if prob > 0.05:
+                        G.add_edge(mood_labels[i], mood_labels[j], weight=prob)
+            pos = nx.circular_layout(G)
+            edges = G.edges()
+            weights = [6 * G[u][v]['weight'] for u, v in edges]
+            fig2, ax2 = plt.subplots(figsize=(5, 5))
+            nx.draw_networkx_nodes(G, pos, node_size=1800, node_color="lightblue", ax=ax2)
+            nx.draw_networkx_labels(G, pos, font_size=11, font_weight='bold', ax=ax2)
+            nx.draw_networkx_edges(G, pos, width=weights, arrowsize=22, arrowstyle='-|>', ax=ax2)
+            nx.draw_networkx_edge_labels(G, pos,
+                edge_labels={(u, v): f"{G[u][v]['weight']:.2f}" for u, v in edges}, font_size=10, ax=ax2)
+            ax2.set_title("Mixed-State Diagram")
+            ax2.axis('off')
+            plt.tight_layout()
+            st.pyplot(fig2)
+            st.download_button(
+                "Download Mixed-Netzwerk als PNG",
+                data=fig1_to_bytes(fig2),
+                file_name="mixed_markov_network.png"
+            )
+    
+        st.caption("""
+        Die Mixed-State Matrix und das Netzwerk zeigen nur die Übergänge während automatisch detektierter, potentiell gemischter Episoden
+        (definiert durch mindestens {min_jumps} Sprünge ≥2 Stufen in einem {window_days}-Tage-Fenster).
+        Vergleiche die diagonalfremden Wahrscheinlichkeiten (z.B. Low→High, High→Low) mit den Literaturwerten.
+        """)
+    
+    else:
+        st.info("Es wurden zu wenige Mixed-State-Tage gefunden, um eine aussagekräftige Matrix zu erstellen. Probiere es mit einem kleineren Fenster oder weniger Sprüngen.")
+    
+    # Optional: Markiere im Zeitverlauf alle Mixed-Tage farbig
+    fig, ax = plt.subplots(figsize=(12, 2))
+    ax.plot(df_tagesmittel['Datum'], df_tagesmittel['Stimmungswert'], color='lightgray', label='Stimmung')
+    ax.scatter(df_tagesmittel['Datum'].iloc[mixed_indices], mood_series[mixed_indices],
+               color='crimson', label='Mixed-Episode', s=30)
+    ax.set_title("Markierte Mixed-State-Tage im Zeitverlauf")
+    ax.set_ylabel("Mood")
+    plt.tight_layout()
+    st.pyplot(fig)
+
 else:
     st.info("Bitte lade zuerst eine Daylio-Export-CSV hoch.")
