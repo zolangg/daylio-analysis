@@ -394,6 +394,9 @@ if uploaded_file:
             data=fig1_to_bytes(fig2),
             file_name="markov_network.png"
         )
-
+        st.caption("""
+        Die linke Heatmap zeigt die Wahrscheinlichkeit, von jedem Zustand in einen anderen zu wechseln.  
+        Der rechte Netzwerkplot zeigt die wichtigsten Übergänge als Pfeile. Dicke Pfeile und große Zahlen markieren häufige Übergänge.
+        """)
 else:
     st.info("Bitte lade zuerst eine Daylio-Export-CSV hoch.")
