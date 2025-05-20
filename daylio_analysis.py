@@ -326,84 +326,9 @@ if uploaded_file:
         Niedrige Werte bedeuten wiederholbare, stabile Muster, hohe Werte zeigen chaotische, schwer vorhersagbare Verläufe.
         Die adaptiven Baselines markieren Wertebereiche, die laut Studienlage auffällig ('Warnsignal') oder kritisch sind.
         """)
-    
-    st.subheader("Markov Mood-Modell: Übergänge zwischen Stimmungszuständen")
-
-    # --- Mood-Zustände und Label ---
-    mood_labels = ['Super Low', 'Low', 'Euthym', 'High', 'Super High']
-
-    # Zunächst die Stimmungswerte für Markov auf Integer-Stufen abbilden
-    df_tagesmittel = df_tagesmittel.dropna(subset=['Stimmungswert'])
-    mood_vals = df_tagesmittel['Stimmungswert'].round().astype(int).clip(1, 5)
-    mood_idx = mood_vals - 1  # 0=Super Low, ..., 4=Super High
-
-    # Übergangspaare berechnen
-    transitions = list(zip(mood_idx[:-1], mood_idx[1:]))
-    n_states = len(mood_labels)
-    trans_matrix = np.zeros((n_states, n_states), dtype=int)
-    for i, j in transitions:
-        if 0 <= i < n_states and 0 <= j < n_states:
-            trans_matrix[i, j] += 1
-
-    # Zu Wahrscheinlichkeiten normieren (Zeile = Ausgangszustand)
-    with np.errstate(invalid='ignore'):
-        trans_prob = trans_matrix / trans_matrix.sum(axis=1, keepdims=True)
-
-    # --- Plots nebeneinander (mit st.columns) ---
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown("**Markov-Übergangsmatrix (Heatmap)**")
-        fig, ax = plt.subplots(figsize=(5, 5))  # quadratisch
-        sns.heatmap(trans_prob, annot=True, cmap="YlOrRd", fmt=".2f",
-                    xticklabels=mood_labels, yticklabels=mood_labels, cbar_kws={'label': 'Wahrscheinlichkeit'}, ax=ax)
-        ax.set_xlabel("→ Nächster Zustand")
-        ax.set_ylabel("Aktueller Zustand")
-        ax.set_title("Markov-Übergangsmatrix")
-        plt.tight_layout()
-        st.pyplot(fig)
-        st.download_button(
-            "Download Matrix als PNG",
-            data=fig1_to_bytes(fig),
-            file_name="markov_matrix.png"
-        )
-    
-    with col2:
-        st.markdown("**Markov State Diagram (Netzwerkplot)**")
-        G = nx.DiGraph()
-        for i, mood in enumerate(mood_labels):
-            G.add_node(mood)
-        for i in range(n_states):
-            for j in range(n_states):
-                prob = trans_prob[i, j]
-                if prob > 0.05:
-                    G.add_edge(mood_labels[i], mood_labels[j], weight=prob)
-        pos = nx.circular_layout(G)
-        edges = G.edges()
-        weights = [6 * G[u][v]['weight'] for u, v in edges]
-        fig2, ax2 = plt.subplots(figsize=(5, 5))  # exakt gleiche Größe
-        nx.draw_networkx_nodes(G, pos, node_size=1800, node_color="lightblue", ax=ax2)
-        nx.draw_networkx_labels(G, pos, font_size=11, font_weight='bold', ax=ax2)
-        nx.draw_networkx_edges(G, pos, width=weights, arrowsize=22, arrowstyle='-|>', ax=ax2)
-        nx.draw_networkx_edge_labels(G, pos,
-            edge_labels={(u, v): f"{G[u][v]['weight']:.2f}" for u, v in edges}, font_size=10, ax=ax2)
-        ax2.set_title("Markov State Diagram", pad=20)
-        ax2.axis('off')
-        plt.tight_layout()
-        st.pyplot(fig2)
-        st.download_button(
-            "Download Netzwerk als PNG",
-            data=fig1_to_bytes(fig2),
-            file_name="markov_network.png"
-        )
-    st.caption("""
-    **Interpretation:**
-    Die linke Heatmap zeigt die Wahrscheinlichkeit, von jedem Zustand in einen anderen zu wechseln.  
-    Der rechte Netzwerkplot zeigt die wichtigsten Übergänge als Pfeile. Dicke Pfeile und große Zahlen markieren häufige Übergänge.
-    """)
         
     # Subthreshold Mixed-State Detection
-    st.header("Subtile Mixed-Episoden (inkl. leichte Instabilität)")
+    st.header("Markov Mood-Modell: Subtile Mixed-Episoden (inkl. leichte Instabilität)")
     
     window_days = st.sidebar.slider("Suchfenster (Tage)", min_value=3, max_value=30, value=5)
     min_jumps = st.sidebar.slider("Minimale Sprunganzahl (Diff ≥1.5)", min_value=1, max_value=window_days, value=2)
@@ -509,6 +434,11 @@ if uploaded_file:
     ax.set_ylabel("Mood")
     plt.tight_layout()
     st.pyplot(fig)
+    st.download_button(
+    "Download Mixed-State Zeitverlauf als PNG",
+    data=fig1_to_bytes(fig),
+    file_name="mixed_state_zeitverlauf.png"
+)
 
 else:
     st.info("Bitte lade zuerst eine Daylio-Export-CSV hoch.")
