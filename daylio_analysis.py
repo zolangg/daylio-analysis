@@ -145,7 +145,7 @@ if uploaded_file:
     df_tagesmittel["Stimmungs-Kategorie"] = df_tagesmittel["Stimmungswert"].apply(mood_class)
 
     # --- Häufigkeitsverteilung (0.5 Schritte) ---
-    st.subheader("Häufigkeitsverteilung der Mood-Tageswerte (0.5er Schritte)")
+    st.subheader("Häufigkeitsverteilung der Mood-Tageswerte")
     bins = np.arange(1, 5.6, 0.5)
     hist, bin_edges = np.histogram(df_tagesmittel['Stimmungswert'], bins=bins)
     fig_hist, ax_hist = plt.subplots(figsize=(8, 4))
@@ -154,7 +154,7 @@ if uploaded_file:
     ax_hist.set_xticklabels([f"{b:.1f}" for b in bin_edges[:-1]])
     ax_hist.set_xlabel("Mood-Wert (0.5 Stufen)")
     ax_hist.set_ylabel("Tage")
-    ax_hist.set_title("Häufigkeitsverteilung der Mood-Tageswerte (0.5er Schritte)")
+    ax_hist.set_title("Häufigkeitsverteilung der Mood-Tageswerte")
     st.pyplot(fig_hist)
     st.download_button(
         "Download Häufigkeitsverteilung als PNG",
@@ -167,7 +167,7 @@ if uploaded_file:
         """)
 
     # --- Mood Zeitverlauf (farbcodiert nach 0.5 Stufen) ---
-    st.subheader("Mood Zeitverlauf (farbcodiert, 0.5er Schritte)")
+    st.subheader("Mood Zeitverlauf")
     mood_vals = df_tagesmittel['Stimmungswert'].values
     dates = df_tagesmittel['Datum'].values
 
@@ -200,7 +200,7 @@ if uploaded_file:
         ax_mood.axhline(y, color='lightgray', linestyle='--', linewidth=0.5)
     ax_mood.set_ylabel("Mood (1=Super Low ... 5=Super High)")
     ax_mood.set_xlabel("Datum")
-    ax_mood.set_title("Mood Zeitverlauf (farbcodiert, 0.5er Schritte)")
+    ax_mood.set_title("Mood Zeitverlauf")
     st.pyplot(fig_mood)
     st.download_button(
         "Download Mood Zeitverlauf als PNG",
@@ -214,7 +214,7 @@ if uploaded_file:
         """)
 
     # --- Stimmungsglättung ---
-    st.subheader("Stimmungsglättung (Savitzky-Golay & LOESS, starke Glättung, 0.5er-Stufen)")
+    st.subheader("Stimmungsglättung")
 
     raw = df_tagesmittel['Stimmungswert'].values
     x = np.arange(len(raw))
@@ -244,7 +244,7 @@ if uploaded_file:
     ax2.text(df_tagesmittel['Datum'].iloc[5], 3.5 + 0.05, "Schwelle Hypomanie (3.5)", color='grey', fontsize=9,
              va='bottom')
 
-    ax2.set_title("Stimmungsglättung (Savitzky-Golay & LOESS, starke Glättung)")
+    ax2.set_title("Stimmungsglättung")
     ax2.set_xlabel("Datum")
     ax2.set_ylabel("Stimmungswert")
     ax2.legend()
