@@ -293,7 +293,7 @@ if uploaded_file:
         Die orange Linie zeigt die Autokorrelation – sie misst, wie stark deine Stimmung an aufeinanderfolgenden Tagen ähnlich bleibt.
         Ein starker Anstieg der Autokorrelation kann auf eine beginnende Phase (z. B. manisch oder depressiv) hindeuten.
         Die Baselines passen sich automatisch an die Fenstergröße an und markieren empirisch fundierte Warn- und Kritisch-Schwellen.
-    """)
+        """)
 
     st.subheader("Shannon Entropie & Approximate Entropie (Stabilität der Stimmung)")
     fig4, ax4 = plt.subplots(figsize=(12, 5))
@@ -325,7 +325,7 @@ if uploaded_file:
         Die **Approximate Entropy** (rot) bewertet die Komplexität und Vorhersagbarkeit deines Stimmungsverlaufs.
         Niedrige Werte bedeuten wiederholbare, stabile Muster, hohe Werte zeigen chaotische, schwer vorhersagbare Verläufe.
         Die adaptiven Baselines markieren Wertebereiche, die laut Studienlage auffällig ('Warnsignal') oder kritisch sind.
-    """)
+        """)
 
 else:
     st.info("Bitte lade zuerst eine Daylio-Export-CSV hoch.")
