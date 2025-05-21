@@ -61,7 +61,7 @@ def fig1_to_bytes(fig):
 
 
 st.set_page_config(layout="wide", page_title="Daylio Stimmungsanalyse")
-st.title("Daylio Stimmungsanalyse – Intra-tägliche Mixed States, Frühwarnsignale & Entropie")
+st.title("Daylio Stimmungsanalyse")
 
 st.write("""
 Lade deinen Daylio-Export (CSV) hoch und erhalte die wichtigsten Visualisierungen:
