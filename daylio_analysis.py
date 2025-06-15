@@ -338,26 +338,14 @@ if uploaded_file:
 """)
 
     # --- Label-Analyse-Block (nur Heatmap, separater Abschnitt) ---
+        # --- Label-Analyse-Block (nur Heatmap, kein Filter) ---
     st.header("Label-Analyse (Heatmap)")
 
     if 'activities' in df.columns:
         df['Label_List'] = df['activities'].fillna('').apply(lambda x: [a.strip() for a in x.split('|')] if x else [])
-        all_labels = pd.Series([a for acts in df['Label_List'] for a in acts if a])
-        unique_labels = all_labels.value_counts().index.tolist()
-
-        # Label-Auswahl (nur für diesen Block!)
-        selected_labels = st.multiselect(
-            "Heatmap nur für ausgewählte Labels (optional):",
-            unique_labels
-        )
-        if selected_labels:
-            df_labels = df[df['Label_List'].apply(lambda acts: any(a in acts for a in selected_labels))]
-        else:
-            df_labels = df.copy()
-
         # Heatmap Labels vs. Mood
         mood_bins = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
-        df_expl = df_labels.explode('Label_List')
+        df_expl = df.explode('Label_List')
         df_expl = df_expl[df_expl['Label_List'] != '']
         df_expl['Mood_Bin'] = pd.cut(df_expl['Stimmungswert'], bins=mood_bins, include_lowest=True, right=False)
         heatmap_data = pd.crosstab(df_expl['Label_List'], df_expl['Mood_Bin'])
@@ -371,5 +359,7 @@ if uploaded_file:
             st.caption("Heatmap: Zeigt, wie oft ein Label in verschiedenen Mood-Stufen vorkommt.")
         else:
             st.info("Keine Daten für Heatmap vorhanden.")
+    else:
+        st.info("Keine activities-Spalte in den Daten gefunden.")
 else:
     st.info("Keine activities-Spalte in den Daten gefunden.")
