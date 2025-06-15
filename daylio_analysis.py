@@ -341,64 +341,63 @@ else:
     st.info("Bitte lade zuerst eine Daylio-Export-CSV hoch.")
     
     # --- Label-Analyse-Block (separater Abschnitt ganz am Ende) ---
+    st.header("Label-Analyse")
 
-st.header("Label-Analyse")
+    if 'activities' in df.columns:
+        df['Label_List'] = df['activities'].fillna('').apply(lambda x: [a.strip() for a in x.split('|')] if x else [])
+        all_labels = pd.Series([a for acts in df['Label_List'] for a in acts if a])
+        unique_labels = all_labels.value_counts().index.tolist()
+        
+        # Label-Auswahl (nur für diesen Block!)
+        selected_labels = st.multiselect(
+            "Analyse nur für ausgewählte Labels (optional):",
+            unique_labels
+        )
+        if selected_labels:
+            df_labels = df[df['Label_List'].apply(lambda acts: any(a in acts for a in selected_labels))]
+        else:
+            df_labels = df.copy()
+        
+        # Durchschnittlicher Mood je Label
+        label_mood = (
+            df_labels.explode('Label_List')
+            .loc[lambda d: d['Label_List'] != '']
+            .groupby('Label_List')['Stimmungswert']
+            .mean()
+            .sort_values(ascending=False)
+        )
+        st.subheader("Durchschnittlicher Mood je Label")
+        st.bar_chart(label_mood)
 
-if 'activities' in df.columns:
-    df['Label_List'] = df['activities'].fillna('').apply(lambda x: [a.strip() for a in x.split('|')] if x else [])
-    all_labels = pd.Series([a for acts in df['Label_List'] for a in acts if a])
-    unique_labels = all_labels.value_counts().index.tolist()
-    
-    # Label-Auswahl (nur für diesen Block!)
-    selected_labels = st.multiselect(
-        "Analyse nur für ausgewählte Labels (optional):",
-        unique_labels
-    )
-    if selected_labels:
-        df_labels = df[df['Label_List'].apply(lambda acts: any(a in acts for a in selected_labels))]
+        # Heatmap Labels vs. Mood
+        mood_bins = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
+        df_expl = df_labels.explode('Label_List')
+        df_expl = df_expl[df_expl['Label_List'] != '']
+        df_expl['Mood_Bin'] = pd.cut(df_expl['Stimmungswert'], bins=mood_bins, include_lowest=True, right=False)
+        heatmap_data = pd.crosstab(df_expl['Label_List'], df_expl['Mood_Bin'])
+        if not heatmap_data.empty:
+            import seaborn as sns
+            fig_hm, ax_hm = plt.subplots(figsize=(12, min(8, 0.5*len(heatmap_data))))
+            sns.heatmap(heatmap_data, annot=True, fmt="d", cmap="YlOrRd", ax=ax_hm, cbar=True)
+            ax_hm.set_xlabel("Mood-Stufe")
+            ax_hm.set_ylabel("Label")
+            st.pyplot(fig_hm)
+            st.caption("Heatmap: Zeigt, wie oft ein Label in verschiedenen Mood-Stufen vorkommt.")
+
+        # Kombinationsmuster (Top 10)
+        comb_counts = pd.Series(
+            [" | ".join(sorted(set(acts))) for acts in df_labels['Label_List'] if len(acts) > 1]
+        ).value_counts().head(10)
+        st.subheader("Häufigste Label-Kombinationen (Top 10)")
+        st.dataframe(comb_counts.rename('Tage'), use_container_width=True)
+
+        # Durchschnittlicher Mood je Kombi (Top 10)
+        comb_mood_dict = {}
+        for combi, _ in comb_counts.items():
+            acts = [a.strip() for a in combi.split('|')]
+            mask = df_labels['Label_List'].apply(lambda x: set(acts).issubset(set(x)) and len(x) == len(acts))
+            comb_mood_dict[combi] = df_labels.loc[mask, 'Stimmungswert'].mean()
+        comb_mood_df = pd.DataFrame(list(comb_mood_dict.items()), columns=['Label-Kombination', 'Durchschnittlicher Mood']).sort_values('Durchschnittlicher Mood', ascending=False)
+        st.dataframe(comb_mood_df, use_container_width=True)
     else:
-        df_labels = df.copy()
-    
-    # Durchschnittlicher Mood je Label
-    label_mood = (
-        df_labels.explode('Label_List')
-        .loc[lambda d: d['Label_List'] != '']
-        .groupby('Label_List')['Stimmungswert']
-        .mean()
-        .sort_values(ascending=False)
-    )
-    st.subheader("Durchschnittlicher Mood je Label")
-    st.bar_chart(label_mood)
-
-    # Heatmap Labels vs. Mood
-    mood_bins = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
-    df_expl = df_labels.explode('Label_List')
-    df_expl = df_expl[df_expl['Label_List'] != '']
-    df_expl['Mood_Bin'] = pd.cut(df_expl['Stimmungswert'], bins=mood_bins, include_lowest=True, right=False)
-    heatmap_data = pd.crosstab(df_expl['Label_List'], df_expl['Mood_Bin'])
-    if not heatmap_data.empty:
-        import seaborn as sns
-        fig_hm, ax_hm = plt.subplots(figsize=(12, min(8, 0.5*len(heatmap_data))))
-        sns.heatmap(heatmap_data, annot=True, fmt="d", cmap="YlOrRd", ax=ax_hm, cbar=True)
-        ax_hm.set_xlabel("Mood-Stufe")
-        ax_hm.set_ylabel("Label")
-        st.pyplot(fig_hm)
-        st.caption("Heatmap: Zeigt, wie oft ein Label in verschiedenen Mood-Stufen vorkommt.")
-
-    # Kombinationsmuster (Top 10)
-    comb_counts = pd.Series(
-        [" | ".join(sorted(set(acts))) for acts in df_labels['Label_List'] if len(acts) > 1]
-    ).value_counts().head(10)
-    st.subheader("Häufigste Label-Kombinationen (Top 10)")
-    st.dataframe(comb_counts.rename('Tage'), use_container_width=True)
-
-    # Durchschnittlicher Mood je Kombi (Top 10)
-    comb_mood_dict = {}
-    for combi, _ in comb_counts.items():
-        acts = [a.strip() for a in combi.split('|')]
-        mask = df_labels['Label_List'].apply(lambda x: set(acts).issubset(set(x)) and len(x) == len(acts))
-        comb_mood_dict[combi] = df_labels.loc[mask, 'Stimmungswert'].mean()
-    comb_mood_df = pd.DataFrame(list(comb_mood_dict.items()), columns=['Label-Kombination', 'Durchschnittlicher Mood']).sort_values('Durchschnittlicher Mood', ascending=False)
-    st.dataframe(comb_mood_df, use_container_width=True)
-else:
-    st.info("Keine activities-Spalte in den Daten gefunden.")
+        st.info("Keine activities-Spalte in den Daten gefunden.")
