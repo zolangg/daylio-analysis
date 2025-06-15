@@ -4,17 +4,32 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 from statsmodels.nonparametric.smoothers_lowess import lowess
-from scipy.stats import zscore
+
 
 # --- SCHWELLENWERT-FUNKTIONEN ---
 def varianz_warnschwelle(win): return max(0.2, 0.4 - 0.0015 * win)
+
+
 def varianz_kritschwelle(win): return max(0.3, 0.5 - 0.001 * win)
+
+
 def autokorr_warnschwelle(win): return 0.45 - 0.0005 * win
+
+
 def autokorr_kritschwelle(win): return 0.65 - 0.0003 * win
+
+
 def shannon_warnschwelle(win): return 1.3 + 0.001 * win
+
+
 def shannon_kritschwelle(win): return 1.6 + 0.001 * win
+
+
 def apen_warnschwelle(win): return 0.5 + 0.001 * win
+
+
 def apen_kritschwelle(win): return 0.7 + 0.0015 * win
+
 
 def shannon_entropy(sequence):
     values, counts = np.unique(sequence, return_counts=True)
@@ -22,16 +37,20 @@ def shannon_entropy(sequence):
     entropy = -np.sum(probs * np.log2(probs + 1e-12))
     return entropy
 
+
 def approximate_entropy(U, m=2, r=0.2):
     U = np.array(U)
     N = len(U)
     if N <= m + 1:
         return np.nan
+
     def _phi(m):
         X = np.array([U[i:i + m] for i in range(N - m + 1)])
         C = np.sum(np.max(np.abs(X[:, None] - X[None, :]), axis=2) <= r, axis=0) / (N - m + 1.0)
         return np.sum(np.log(C + 1e-12)) / (N - m + 1.0)
+
     return abs(_phi(m) - _phi(m + 1))
+
 
 def fig1_to_bytes(fig):
     import io
@@ -40,20 +59,23 @@ def fig1_to_bytes(fig):
     buf.seek(0)
     return buf
 
+
 st.set_page_config(layout="wide", page_title="Daylio Stimmungsanalyse")
 st.title("Daylio Stimmungsanalyse")
+
 st.write("""
 Lade deinen Daylio-Export (CSV) hoch und erhalte die wichtigsten Visualisierungen:
 - Häufigkeitsverteilung und Mood Zeitverlauf
 - Stimmungsglättung (Savitzky-Golay, LOESS)
 - Rolling Varianz & Autokorrelation (Frühwarnsignale)
 - Entropie-Maße als Stabilitätsindikator
-- Identifikation von Tagen mit intra-täglichen Mixed States
+- Identifikation von Tagen mit intra-täglichen Mixed States (keine Inter-Mixed, kein Markov)
 """)
 
 uploaded_file = st.file_uploader("Daylio CSV-Datei hochladen", type=["csv"])
 
 if uploaded_file:
+    # --- DATEN EINLESEN UND MAPPEN ---
     df = pd.read_csv(uploaded_file)
     mood_map = {
         'Super Low': 1,
@@ -71,6 +93,7 @@ if uploaded_file:
     intra_var = daily_moods.apply(np.std)
     intra_range = daily_moods.apply(lambda x: max(x) - min(x) if len(x) > 1 else 0)
     mixed_intra = (intra_range >= 2) | (intra_var >= 1)
+
     df_intraday = pd.DataFrame({
         'Datum': daily_moods.index,
         'Mood_List': daily_moods.values,
@@ -79,7 +102,7 @@ if uploaded_file:
         'Mixed_IntraDay': mixed_intra.values,
     })
 
-    # --- Tagesmittel für Plots ---
+    # --- Tagesmittel für klassische Plots ---
     df_tagesmittel = df.groupby('full_date')['Stimmungswert'].mean().reset_index()
     df_tagesmittel = df_tagesmittel.sort_values('full_date')
     df_tagesmittel['Datum'] = df_tagesmittel['full_date']
@@ -148,11 +171,17 @@ if uploaded_file:
         data=fig1_to_bytes(fig_hist),
         file_name="haeufigkeitsverteilung.png"
     )
+    st.caption("""
+        Interpretation: Das Histogramm zeigt die Verteilung der täglichen Stimmungsmittelwerte in 0.5er-Schritten.
+        So erkennst du, welche Stimmungskategorien besonders häufig vertreten sind und ob es Tendenzen zu einem bestimmten Pol (depressiv, euthym, hypomanisch/manisch) gibt.
+        Eine Häufung in den extremen Bereichen kann für eine erhöhte Instabilität oder Polymodalität sprechen.
+    """)
 
     # --- Mood Zeitverlauf (farbcodiert nach 0.5 Stufen) ---
     st.subheader("Mood Zeitverlauf")
     mood_vals = df_tagesmittel['Stimmungswert'].values
     dates = df_tagesmittel['Datum'].values
+
 
     def color_for_mood(val):
         if val <= 1.5:
@@ -172,6 +201,7 @@ if uploaded_file:
         else:
             return '#900c3f'
 
+
     colors = [color_for_mood(v) for v in mood_vals]
     fig_mood, ax_mood = plt.subplots(figsize=(14, 5))
     ax_mood.scatter(dates, mood_vals, c=colors, s=30, label="Mood-Wert")
@@ -187,6 +217,11 @@ if uploaded_file:
         data=fig1_to_bytes(fig_mood),
         file_name="mood_zeitverlauf.png"
     )
+    st.caption("""
+        Interpretation: Der Verlauf zeigt die Entwicklung der Stimmungsmittelwerte im Zeitverlauf. 
+        Farbige Punkte markieren die Stimmungskategorie je Tag. Stabile Phasen, plötzliche Sprünge oder längere Extrembereiche werden sofort sichtbar.
+        Perioden mit schnellen Wechseln, Clustern oder Plateaus können auf gemischte oder instabile Verläufe hindeuten.
+    """)
 
     # --- Stimmungsglättung ---
     st.subheader("Stimmungsglättung")
@@ -199,7 +234,7 @@ if uploaded_file:
             sg = np.full_like(raw, np.nan)
     except Exception:
         sg = np.full_like(raw, np.nan)
-    loess_curve = lowess(raw, x, frac=loess_frac, return_sorted=False)
+    loess_curve = lowess(raw, x, frac=0.08, return_sorted=False)
     fig2, ax2 = plt.subplots(figsize=(12, 5))
     ax2.plot(df_tagesmittel['Datum'], raw, color='gold', alpha=0.2, label="Tagesmittel (roh)")
     ax2.plot(df_tagesmittel['Datum'], sg, color='orange', linewidth=2, label="Savitzky-Golay")
@@ -207,9 +242,11 @@ if uploaded_file:
     for y in np.arange(1.5, 5.1, 0.5):
         ax2.axhline(y, color='lightgray', linestyle='--', linewidth=0.7)
     ax2.axhline(2.5, color='grey', linestyle='--', linewidth=1, alpha=0.6)
-    ax2.text(df_tagesmittel['Datum'].iloc[5], 2.5 + 0.05, "Schwelle Depression (2.5)", color='grey', fontsize=9, va='bottom')
+    ax2.text(df_tagesmittel['Datum'].iloc[5], 2.5 + 0.05, "Schwelle Depression (2.5)", color='grey', fontsize=9,
+             va='bottom')
     ax2.axhline(3.5, color='grey', linestyle='--', linewidth=1, alpha=0.6)
-    ax2.text(df_tagesmittel['Datum'].iloc[5], 3.5 + 0.05, "Schwelle Hypomanie (3.5)", color='grey', fontsize=9, va='bottom')
+    ax2.text(df_tagesmittel['Datum'].iloc[5], 3.5 + 0.05, "Schwelle Hypomanie (3.5)", color='grey', fontsize=9,
+             va='bottom')
     ax2.set_title("Stimmungsglättung")
     ax2.set_xlabel("Datum")
     ax2.set_ylabel("Stimmungswert")
@@ -220,23 +257,33 @@ if uploaded_file:
         data=fig1_to_bytes(fig2),
         file_name="stimmungsglaettung.png"
     )
+    st.caption("""
+        Interpretation: Die geglätteten Kurven (Savitzky-Golay, LOESS) machen langfristige Trends und langsame Veränderungen sichtbar. 
+        Saisonalitäten, Phasenübergänge oder längerfristige Instabilität werden so erkennbar, auch wenn Tageswerte stark schwanken.
+        Eine anhaltend hohe oder niedrige Linie signalisiert längere Stimmungsverschiebungen.
+    """)
 
-    # --- Frühwarnsignale: Varianz und Autokorrelation, z-score & Markierung bei gemeinsamer Spitze ---
-    st.subheader("Überlagerte Frühwarnsignale: Varianz vs. Autokorrelation (z-score)")
-    df_tagesmittel['Varianz_z'] = zscore(df_tagesmittel['Varianz'].fillna(0))
-    df_tagesmittel['Autokorr_z'] = zscore(df_tagesmittel['Autokorr'].fillna(0))
-    joint_peaks = (df_tagesmittel['Varianz_z'] > 1) & (df_tagesmittel['Autokorr_z'] > 1)
+    # --- Frühwarnsignale: Varianz und Autokorrelation ---
+    st.subheader("Überlagerte Frühwarnsignale: Varianz vs. Autokorrelation")
     fig1, ax1 = plt.subplots(figsize=(12, 5))
-    ax1.plot(df_tagesmittel['Datum'], df_tagesmittel['Varianz_z'], label='Varianz (z-score)')
-    ax1.plot(df_tagesmittel['Datum'], df_tagesmittel['Autokorr_z'], label='Autokorrelation (z-score)')
-    for i in range(1, len(joint_peaks)):
-        if joint_peaks.iloc[i]:
-            ax1.axvspan(df_tagesmittel['Datum'].iloc[i-1], df_tagesmittel['Datum'].iloc[i], color='red', alpha=0.2)
-    ax1.set_title("Varianz & Autokorrelation (z-score, kritische Zeiträume rot)")
+    ax1.plot(df_tagesmittel['Datum'], df_tagesmittel['Varianz'], color='gold', label=f'Rolling Varianz ({win} Tage)')
+    ax1.plot(df_tagesmittel['Datum'], df_tagesmittel['Autokorr'], color='orange',
+             label=f'Rolling Autokorrelation (Lag 1, {win} Tage)')
+    ax1.axhline(varianz_warnschwelle(win), color='grey', linestyle='--', alpha=0.4, linewidth=1)
+    ax1.axhline(varianz_kritschwelle(win), color='grey', linestyle=':', alpha=0.4, linewidth=1)
+    ax1.axhline(autokorr_warnschwelle(win), color='grey', linestyle='--', alpha=0.4, linewidth=1)
+    ax1.axhline(autokorr_kritschwelle(win), color='grey', linestyle=':', alpha=0.4, linewidth=1)
+    ax1.set_title("Überlagerte Frühwarnsignale: Varianz vs. Autokorrelation")
     ax1.set_xlabel("Datum")
-    ax1.set_ylabel("z-score")
-    ax1.legend()
+    ax1.set_ylabel("Wert")
+    ax1.legend(loc='upper left')
     st.pyplot(fig1)
+    st.download_button("Download Frühwarnsignale als PNG", data=fig1_to_bytes(fig1), file_name="fruehwarnsignale.png")
+    st.caption("""
+        Interpretation: Varianz zeigt, wie stark die Stimmung schwankt – hohe Werte deuten auf größere Labilität oder viele Extreme hin.
+        Autokorrelation misst die Ähnlichkeit aufeinanderfolgender Tage – ein plötzlicher Anstieg kann auf den Beginn einer Episode hindeuten.
+        Warn- und Kritisch-Linien basieren auf typischen Schwellenwerten aus Studien zur Früherkennung von Episoden oder Instabilität.
+    """)
 
     # --- Entropie ---
     st.subheader("Shannon Entropie & Approximate Entropie (Stabilität der Stimmung)")
@@ -252,6 +299,12 @@ if uploaded_file:
     ax4.set_ylabel("Entropie")
     ax4.legend(loc='upper left')
     st.pyplot(fig4)
+    st.download_button("Download Entropie-Plot als PNG", data=fig1_to_bytes(fig4), file_name="entropie.png")
+    st.caption("""
+        Interpretation: Die Entropiewerte messen die Unvorhersehbarkeit und Komplexität deiner Stimmung im Zeitfenster.
+        Hohe Werte bedeuten chaotische, schwer vorhersagbare Phasen – niedrige Werte stehen für Gleichförmigkeit und Stabilität.
+        Kritische Schwellen sind an Early-Warning-Signal-Studien und EMA-Forschung angelehnt.
+    """)
 
     # --- Intra-tägliche Mixed-State-Phasen ---
     st.subheader("Intra-tägliche Mixed-State-Phasen")
@@ -267,42 +320,40 @@ if uploaded_file:
     ax.legend(loc='upper left')
     plt.tight_layout()
     st.pyplot(fig)
+    st.download_button(
+        "Download Intra-tägliche Mixed-State Zeitreihe",
+        data=fig1_to_bytes(fig),
+        file_name="intra_mixed_state_zeitreihe.png"
+    )
+    st.caption("""
+        Interpretation: Dieser Plot zeigt alle Tage, an denen mindestens zwei sehr unterschiedliche Stimmungseinträge (Range ≥2 Mood-Punkte ODER Standardabweichung ≥1) innerhalb eines Tages gemessen wurden. 
+        Diese Tage gelten als besonders instabil oder gemischt – sie können subklinische oder klinische Mischzustände markieren, wie sie auch in der EMA- und Verlaufsforschung zur Bipolarität beschrieben werden.
+    """)
 
-    # --- Statistik zu Mixed-States ---
+    # --- Statistik und Tabelle ---
     n_intra = int(df_intraday['Mixed_IntraDay'].sum())
     st.markdown(f"""
 **Statistik Intra-tägliche Mixed-State-Tage:**  
 - Intra-tägliche Mixed-States: **{n_intra}** von insgesamt **{len(df_intraday)}** Tagen
 """)
 
-    # --- Label-Analyse-Block (separater Abschnitt ganz am Ende) ---
-    st.header("Label-Analyse")
+    # --- Label-Analyse-Block (nur Heatmap, separater Abschnitt) ---
+    st.header("Label-Analyse (Heatmap)")
 
     if 'activities' in df.columns:
         df['Label_List'] = df['activities'].fillna('').apply(lambda x: [a.strip() for a in x.split('|')] if x else [])
         all_labels = pd.Series([a for acts in df['Label_List'] for a in acts if a])
         unique_labels = all_labels.value_counts().index.tolist()
-        
+
         # Label-Auswahl (nur für diesen Block!)
         selected_labels = st.multiselect(
-            "Analyse nur für ausgewählte Labels (optional):",
+            "Heatmap nur für ausgewählte Labels (optional):",
             unique_labels
         )
         if selected_labels:
             df_labels = df[df['Label_List'].apply(lambda acts: any(a in acts for a in selected_labels))]
         else:
             df_labels = df.copy()
-        
-        # Durchschnittlicher Mood je Label
-        label_mood = (
-            df_labels.explode('Label_List')
-            .loc[lambda d: d['Label_List'] != '']
-            .groupby('Label_List')['Stimmungswert']
-            .mean()
-            .sort_values(ascending=False)
-        )
-        st.subheader("Durchschnittlicher Mood je Label")
-        st.bar_chart(label_mood)
 
         # Heatmap Labels vs. Mood
         mood_bins = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
@@ -318,24 +369,7 @@ if uploaded_file:
             ax_hm.set_ylabel("Label")
             st.pyplot(fig_hm)
             st.caption("Heatmap: Zeigt, wie oft ein Label in verschiedenen Mood-Stufen vorkommt.")
-
-        # Kombinationsmuster (Top 10)
-        comb_counts = pd.Series(
-            [" | ".join(sorted(set(acts))) for acts in df_labels['Label_List'] if len(acts) > 1]
-        ).value_counts().head(10)
-        st.subheader("Häufigste Label-Kombinationen (Top 10)")
-        st.dataframe(comb_counts.rename('Tage'), use_container_width=True)
-
-        # Durchschnittlicher Mood je Kombi (Top 10)
-        comb_mood_dict = {}
-        for combi, _ in comb_counts.items():
-            acts = [a.strip() for a in combi.split('|')]
-            mask = df_labels['Label_List'].apply(lambda x: set(acts).issubset(set(x)) and len(x) == len(acts))
-            comb_mood_dict[combi] = df_labels.loc[mask, 'Stimmungswert'].mean()
-        comb_mood_df = pd.DataFrame(list(comb_mood_dict.items()), columns=['Label-Kombination', 'Durchschnittlicher Mood']).sort_values('Durchschnittlicher Mood', ascending=False)
-        st.dataframe(comb_mood_df, use_container_width=True)
-    else:
-        st.info("Keine activities-Spalte in den Daten gefunden.")
-
+        else:
+            st.info("Keine Daten für Heatmap vorhanden.")
 else:
-    st.info("Bitte lade zuerst eine Daylio-Export-CSV hoch.")
+    st.info("Keine activities-Spalte in den Daten gefunden.")
