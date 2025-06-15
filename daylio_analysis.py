@@ -84,7 +84,16 @@ if uploaded_file:
         df.explode('Activities_List')
         .groupby('Activities_List')['Stimmungswert']
         .mean()
-        .drop('')
+        # --- Mood-Score je Aktivität ---
+    activity_mood = (
+        df.explode('Activities_List')
+        .loc[lambda d: d['Activities_List'] != '']
+        .groupby('Activities_List')['Stimmungswert']
+        .mean()
+        .sort_values(ascending=False)
+    )
+    st.subheader("Durchschnittlicher Mood je Aktivität")
+    st.bar_chart(activity_mood)
         .sort_values(ascending=False)
     )
     st.subheader("Durchschnittlicher Mood je Aktivität")
