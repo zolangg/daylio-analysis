@@ -339,7 +339,7 @@ if uploaded_file:
 
     # --- Label-Analyse-Block (nur Heatmap, separater Abschnitt) ---
         # --- Label-Analyse-Block (nur Heatmap, kein Filter) ---
-    st.header("Label-Analyse (Heatmap)")
+    st.subheader("Label-Analyse (Heatmap)")
 
     if 'activities' in df.columns:
         df['Label_List'] = df['activities'].fillna('').apply(lambda x: [a.strip() for a in x.split('|')] if x else [])
