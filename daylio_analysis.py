@@ -154,17 +154,40 @@ if uploaded_file:
     if warnungen:
         st.error("🚨 **KRITISCHE WARNUNG:**\n\n" + "\n\n".join(warnungen))
 
-    # --- Häufigkeitsverteilung (0.5 Schritte) ---
+    # --- Häufigkeitsverteilung: Auswahl Gesamt / Jahr / Monat ---
     st.subheader("Häufigkeitsverteilung der Mood-Tageswerte")
+
+    df_tagesmittel['Jahr'] = df_tagesmittel['Datum'].dt.year
+    df_tagesmittel['Monat'] = df_tagesmittel['Datum'].dt.month
+
+    filter_art = st.selectbox(
+        "Zeitfenster wählen:",
+        ["Gesamter Zeitraum", "Jahresweise", "Monatsweise"]
+    )
+
+    if filter_art == "Gesamter Zeitraum":
+        df_hist = df_tagesmittel.copy()
+        title = "Häufigkeitsverteilung (Gesamter Zeitraum)"
+    elif filter_art == "Jahresweise":
+        jahr = st.selectbox("Jahr auswählen:", sorted(df_tagesmittel['Jahr'].unique()))
+        df_hist = df_tagesmittel[df_tagesmittel['Jahr'] == jahr]
+        title = f"Häufigkeitsverteilung ({jahr})"
+    else:  # Monatsweise
+        jahr = st.selectbox("Jahr auswählen:", sorted(df_tagesmittel['Jahr'].unique()))
+        monate = sorted(df_tagesmittel[df_tagesmittel['Jahr'] == jahr]['Monat'].unique())
+        monat = st.selectbox("Monat auswählen:", monate, format_func=lambda m: f"{m:02d}")
+        df_hist = df_tagesmittel[(df_tagesmittel['Jahr'] == jahr) & (df_tagesmittel['Monat'] == monat)]
+        title = f"Häufigkeitsverteilung ({jahr}-{monat:02d})"
+
     bins = np.arange(1, 5.6, 0.5)
-    hist, bin_edges = np.histogram(df_tagesmittel['Stimmungswert'], bins=bins)
+    hist, bin_edges = np.histogram(df_hist['Stimmungswert'], bins=bins)
     fig_hist, ax_hist = plt.subplots(figsize=(8, 4))
     ax_hist.bar(bin_edges[:-1] + 0.25, hist, width=0.5, color='skyblue', edgecolor='black')
     ax_hist.set_xticks(bin_edges[:-1] + 0.25)
     ax_hist.set_xticklabels([f"{b:.1f}" for b in bin_edges[:-1]])
     ax_hist.set_xlabel("Mood-Wert (0.5 Stufen)")
     ax_hist.set_ylabel("Tage")
-    ax_hist.set_title("Häufigkeitsverteilung der Mood-Tageswerte")
+    ax_hist.set_title(title)
     st.pyplot(fig_hist)
     st.download_button(
         "Download Häufigkeitsverteilung als PNG",
