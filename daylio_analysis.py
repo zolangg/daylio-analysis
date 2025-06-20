@@ -360,9 +360,8 @@ if uploaded_file:
 - Intra-tägliche Mixed-States: **{n_intra}** von insgesamt **{len(df_intraday)}** Tagen
 """)
 
-    # --- Label-Analyse-Block (nur Heatmap, separater Abschnitt) ---
-        # --- Label-Analyse-Block (nur Heatmap, kein Filter) ---
-    st.subheader("Label-Analyse (Heatmap)")
+    # --- Label-Analyse-Block ---
+    st.header("Label-Analyse (Heatmap)")
 
     if 'activities' in df.columns:
         df['Label_List'] = df['activities'].fillna('').apply(lambda x: [a.strip() for a in x.split('|')] if x else [])
@@ -379,6 +378,11 @@ if uploaded_file:
             ax_hm.set_xlabel("Mood-Stufe")
             ax_hm.set_ylabel("Label")
             st.pyplot(fig_hm)
+            st.download_button(
+                "Download Heatmap als PNG",
+                data=fig1_to_bytes(fig_hm),
+                file_name="label_heatmap.png"
+            )
             st.caption("Heatmap: Zeigt, wie oft ein Label in verschiedenen Mood-Stufen vorkommt.")
         else:
             st.info("Keine Daten für Heatmap vorhanden.")
