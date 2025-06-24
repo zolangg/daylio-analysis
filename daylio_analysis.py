@@ -77,17 +77,23 @@ def make_pdf(plots):
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
     pdf.cell(0, 10, 'Daylio Stimmungsanalyse Bericht', ln=1, align='C')
-    pdf.ln(5)
+    pdf.ln(8)
 
-    col_width = 90  # mm, 2 Bilder pro Zeile
-    row_height = 70  # mm, Bild plus Titel
-
-    x_start = 10
+    col_width = 90    # Zwei Plots pro Zeile
+    row_height = 80   # Platz für Titel + Bild + Caption
+    margin_x = 10
+    x = margin_x
     y = pdf.get_y()
-    x = x_start
     count = 0
 
     for idx, (title, img_bytes, caption) in enumerate(plots):
+        # Titel über dem Bild
+        pdf.set_xy(x, y)
+        pdf.set_font('Arial', 'B', 10)
+        pdf.multi_cell(col_width, 6, title, align='C')
+        y_title_end = pdf.get_y()
+
+        # Bild direkt unter Titel
         img = Image.open(img_bytes)
         with io.BytesIO() as buf_jpg:
             img.convert('RGB').save(buf_jpg, format='JPEG')
@@ -95,26 +101,27 @@ def make_pdf(plots):
             with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmpfile:
                 tmpfile.write(buf_jpg.read())
                 tmpfile.flush()
-                pdf.image(tmpfile.name, x=x, y=y, w=col_width)
-        # Titel unter das Bild
-        pdf.set_xy(x, y + col_width * 0.65)
-        pdf.set_font('Arial', 'B', 10)
-        pdf.multi_cell(col_width, 6, title, align='C')
+                pdf.image(tmpfile.name, x=x, y=y_title_end, w=col_width)
+        y_img_end = y_title_end + 55  # ca. Bildhöhe
+
+        # Caption unter dem Bild
+        pdf.set_xy(x, y_img_end)
+        pdf.set_font('Arial', '', 9)
+        pdf.multi_cell(col_width, 5, caption, align='L')
+
         count += 1
         if count % 2 == 0:
-            y += row_height
-            x = x_start
+            y = max(pdf.get_y(), y_img_end + 15)
+            x = margin_x
+            if y + row_height > 270:
+                pdf.add_page()
+                y = pdf.get_y()
         else:
-            x += col_width + 5  # kleine Lücke zwischen Spalten
+            x += col_width + 10
+            y = y  # bleibt gleich
 
-        # Nach 6 Bildern Seite umbrechen (optional)
-        if count % 6 == 0 and idx != len(plots) - 1:
-            pdf.add_page()
-            y = pdf.get_y()
-            x = x_start
-
-    out = io.BytesIO(pdf.output(dest='S').encode('latin1'))
-    return out
+    pdf_output = pdf.output(dest='S').encode('latin1')
+    return io.BytesIO(pdf_output)
 
 st.set_page_config(layout="wide", page_title="Daylio Stimmungsanalyse")
 st.title("Daylio Stimmungsanalyse")
