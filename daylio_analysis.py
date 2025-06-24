@@ -448,9 +448,9 @@ if uploaded_file:
     plots = []
     if bytes_hist is not None:
         plots.append((
-            "Häufigkeitsverteilung der Mood-Tageswerte",
+            "Haeufigkeitsverteilung der Mood-Tageswerte",
             bytes_hist,
-            "Das Histogramm zeigt die Verteilung der täglichen Stimmungsmittelwerte in 0.5er-Schritten."
+            "Das Histogramm zeigt die Verteilung der taeglichen Stimmungsmittelwerte in 0.5er-Schritten."
         ))
     if bytes_mood is not None:
         plots.append((
@@ -460,27 +460,27 @@ if uploaded_file:
         ))
     if bytes_glaettung is not None:
         plots.append((
-            "Stimmungsglättung",
+            "Stimmungsglaettung",
             bytes_glaettung,
-            "Die geglätteten Kurven (Savitzky-Golay, LOESS) machen langfristige Trends und Veränderungen sichtbar."
+            "Die geglaetteten Kurven (Savitzky-Golay, LOESS) machen langfristige Trends und Veraenderungen sichtbar."
         ))
     if bytes_warn is not None:
         plots.append((
             "Varianz & Autokorrelation",
             bytes_warn,
-            "Varianz zeigt Schwankungen der Stimmung, Autokorrelation misst die Ähnlichkeit aufeinanderfolgender Tage."
+            "Varianz zeigt Schwankungen der Stimmung, Autokorrelation misst die Aehnlichkeit aufeinanderfolgender Tage."
         ))
     if bytes_entropie is not None:
         plots.append((
             "Shannon & Approximate Entropie",
             bytes_entropie,
-            "Die Entropiewerte messen die Unvorhersehbarkeit und Komplexität deiner Stimmung."
+            "Die Entropiewerte messen die Unvorhersehbarkeit und Komplexitaet deiner Stimmung."
         ))
     if bytes_mixed is not None:
         plots.append((
-            "Intra-tägliche Mixed-State-Phasen",
+            "Intra-taegliche Mixed-State-Phasen",
             bytes_mixed,
-            "Tage mit intra-täglichen Mixed States (Range ≥2 Mood-Punkte ODER Standardabweichung ≥1 innerhalb eines Tages)."
+            "Tage mit intra-taeglichen Mixed States (Range >=2 Mood-Punkte ODER Standardabweichung >=1 innerhalb eines Tages)."
         ))
     if bytes_heatmap is not None:
         plots.append((
