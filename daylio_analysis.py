@@ -186,6 +186,15 @@ if uploaded_file:
             f"**Approximate Entropy kritisch:** {akt_apen:.2f} > {apen_kritschwelle(entropy_win):.2f} (Unregelmäßiger Verlauf)")
     if warnungen:
         st.error("🚨 **KRITISCHE WARNUNG:**\n\n" + "\n\n".join(warnungen))
+        
+    # --- Initialisierung der Bytes-Variablen für alle Plots ---
+    bytes_hist = None
+    bytes_mood = None
+    bytes_glaettung = None
+    bytes_warn = None
+    bytes_entropie = None
+    bytes_mixed = None
+    bytes_heatmap = None
 
     # --- Häufigkeitsverteilung: Auswahl Gesamt / Jahr / Monat ---
     st.subheader("Häufigkeitsverteilung der Mood-Tageswerte")
@@ -222,6 +231,7 @@ if uploaded_file:
     ax_hist.set_ylabel("Tage")
     ax_hist.set_title(title)
     st.pyplot(fig_hist)
+    bytes_hist = fig1_to_bytes(fig_hist)
     st.download_button(
         "Download Häufigkeitsverteilung als PNG",
         data=fig1_to_bytes(fig_hist),
@@ -268,6 +278,7 @@ if uploaded_file:
     ax_mood.set_xlabel("Datum")
     ax_mood.set_title("Mood Zeitverlauf")
     st.pyplot(fig_mood)
+    bytes_mood = fig1_to_bytes(fig_mood)
     st.download_button(
         "Download Mood Zeitverlauf als PNG",
         data=fig1_to_bytes(fig_mood),
@@ -308,6 +319,7 @@ if uploaded_file:
     ax2.set_ylabel("Stimmungswert")
     ax2.legend(loc='upper left')
     st.pyplot(fig2)
+    bytes_glaettung = fig1_to_bytes(fig2)
     st.download_button(
         "Download Stimmungsglättung als PNG",
         data=fig1_to_bytes(fig2),
@@ -334,6 +346,7 @@ if uploaded_file:
     ax1.set_ylabel("Wert")
     ax1.legend(loc='upper left')
     st.pyplot(fig1)
+    bytes_warn = fig1_to_bytes(fig1)
     st.download_button("Download Frühwarnsignale als PNG", data=fig1_to_bytes(fig1), file_name="fruehwarnsignale.png")
     st.caption("""
         Interpretation: Varianz zeigt, wie stark die Stimmung schwankt – hohe Werte deuten auf größere Labilität oder viele Extreme hin.
@@ -355,6 +368,7 @@ if uploaded_file:
     ax4.set_ylabel("Entropie")
     ax4.legend(loc='upper left')
     st.pyplot(fig4)
+    bytes_entropie = fig1_to_bytes(fig4)
     st.download_button("Download Entropie-Plot als PNG", data=fig1_to_bytes(fig4), file_name="entropie.png")
     st.caption("""
         Interpretation: Die Entropiewerte messen die Unvorhersehbarkeit und Komplexität deiner Stimmung im Zeitfenster.
@@ -376,6 +390,7 @@ if uploaded_file:
     ax.legend(loc='upper left')
     plt.tight_layout()
     st.pyplot(fig)
+    bytes_mixed = fig1_to_bytes(fig)
     st.download_button(
         "Download Intra-tägliche Mixed-State Zeitreihe",
         data=fig1_to_bytes(fig),
@@ -411,6 +426,7 @@ if uploaded_file:
             ax_hm.set_xlabel("Mood-Stufe")
             ax_hm.set_ylabel("Label")
             st.pyplot(fig_hm)
+            bytes_heatmap = fig1_to_bytes(fig_hm)
             st.download_button(
                 "Download Heatmap als PNG",
                 data=fig1_to_bytes(fig_hm),
@@ -423,20 +439,51 @@ if uploaded_file:
         st.info("Keine activities-Spalte in den Daten gefunden.")
         
     # --- PDF-Export aller Grafiken ---
-    plots = [
-        ("Häufigkeitsverteilung der Mood-Tageswerte", bytes_hist, 
-         "Das Histogramm zeigt die Verteilung der täglichen Stimmungsmittelwerte in 0.5er-Schritten."),
-        ("Mood Zeitverlauf", bytes_mood, 
-         "Der Verlauf zeigt die Entwicklung der Stimmungsmittelwerte im Zeitverlauf."),
-        ("Stimmungsglättung", bytes_glaettung,
-         "Die geglätteten Kurven (Savitzky-Golay, LOESS) machen langfristige Trends sichtbar."),
-        ("Varianz & Autokorrelation", bytes_warn,
-         "Varianz zeigt Schwankungen der Stimmung, Autokorrelation misst Ähnlichkeit aufeinanderfolgender Tage."),
-        ("Shannon & Approximate Entropie", bytes_entropie,
-         "Die Entropiewerte messen die Unvorhersehbarkeit und Komplexität deiner Stimmung."),
-        ("Intra-tägliche Mixed-State-Phasen", bytes_mixed,
-         "Tage mit intra-täglichen Mixed States (Range ≥2 Mood-Punkte ODER Standardabweichung ≥1) innerhalb eines Tages."),
-    ]
+        # --- PDF-Plotliste für den Bericht ---
+    plots = []
+    if bytes_hist is not None:
+        plots.append((
+            "Häufigkeitsverteilung der Mood-Tageswerte",
+            bytes_hist,
+            "Das Histogramm zeigt die Verteilung der täglichen Stimmungsmittelwerte in 0.5er-Schritten."
+        ))
+    if bytes_mood is not None:
+        plots.append((
+            "Mood Zeitverlauf",
+            bytes_mood,
+            "Der Verlauf zeigt die Entwicklung der Stimmungsmittelwerte im Zeitverlauf."
+        ))
+    if bytes_glaettung is not None:
+        plots.append((
+            "Stimmungsglättung",
+            bytes_glaettung,
+            "Die geglätteten Kurven (Savitzky-Golay, LOESS) machen langfristige Trends und Veränderungen sichtbar."
+        ))
+    if bytes_warn is not None:
+        plots.append((
+            "Varianz & Autokorrelation",
+            bytes_warn,
+            "Varianz zeigt Schwankungen der Stimmung, Autokorrelation misst die Ähnlichkeit aufeinanderfolgender Tage."
+        ))
+    if bytes_entropie is not None:
+        plots.append((
+            "Shannon & Approximate Entropie",
+            bytes_entropie,
+            "Die Entropiewerte messen die Unvorhersehbarkeit und Komplexität deiner Stimmung."
+        ))
+    if bytes_mixed is not None:
+        plots.append((
+            "Intra-tägliche Mixed-State-Phasen",
+            bytes_mixed,
+            "Tage mit intra-täglichen Mixed States (Range ≥2 Mood-Punkte ODER Standardabweichung ≥1 innerhalb eines Tages)."
+        ))
+    if bytes_heatmap is not None:
+        plots.append((
+            "Label-Analyse (Heatmap)",
+            bytes_heatmap,
+            "Heatmap: Zeigt, wie oft ein Label in verschiedenen Mood-Stufen vorkommt."
+        ))
+        
     # Label-Heatmap nur anhängen, wenn vorhanden
     if 'bytes_heatmap' in locals() and bytes_heatmap is not None:
         plots.append((
@@ -444,13 +491,14 @@ if uploaded_file:
             "Heatmap: Zeigt, wie oft ein Label in verschiedenen Mood-Stufen vorkommt."
         ))
 
-    st.markdown("### Bericht exportieren")
-    st.download_button(
-        label="PDF-Bericht herunterladen",
-        data=make_pdf(plots),
-        file_name="stimmungsbericht.pdf",
-        mime="application/pdf"
-    )
+    if plots:
+        st.markdown("### Bericht exportieren")
+        st.download_button(
+            label="PDF-Bericht herunterladen",
+            data=make_pdf(plots),
+            file_name="stimmungsbericht.pdf",
+            mime="application/pdf"
+        )
 
 else:
     st.info("Bitte lade zuerst eine Daylio-Export-CSV hoch.")
