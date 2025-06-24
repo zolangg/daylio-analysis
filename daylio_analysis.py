@@ -73,26 +73,24 @@ class PDF(FPDF):
 
 def make_pdf(plots):
     pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_auto_page_break(auto=True, margin=10)
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
-    pdf.cell(0, 10, 'Daylio Stimmungsanalyse Bericht', ln=1, align='C')
+    pdf.cell(0, 10, 'Plotuebersicht', ln=1, align='C')
     pdf.ln(8)
 
-    col_width = 95    # 2 Plots pro Zeile, mehr Platz!
+    col_width = 95  # Zwei Plots pro Zeile, maximaler Raum!
     margin_x = 8
     x = margin_x
     y = pdf.get_y()
     box_pad = 2
-    img_max_h = 75  # deutlich groesser
-    caption_fontsize = 8
+    img_max_h = 85  # Bild kann jetzt richtig groß sein!
     count = 0
 
     for idx, (title, img_bytes, caption) in enumerate(plots):
         box_x = x
         box_y = y
 
-        # Bild vorbereiten
         img = Image.open(img_bytes)
         aspect = img.height / img.width
         img_w = col_width - 2 * box_pad
@@ -109,16 +107,9 @@ def make_pdf(plots):
                 tmpfile.flush()
                 pdf.image(tmpfile.name, x=img_x, y=img_y, w=img_w, h=img_h)
 
-        # Caption darunter, kleiner und ggf. weniger Zeilen
-        pdf.set_xy(x + box_pad, img_y + img_h + 1)
-        pdf.set_font('Arial', '', caption_fontsize)
-        short_caption = caption.split(".")[0] + "."  # Nur erster Satz
-        pdf.multi_cell(col_width - 2 * box_pad, 4, short_caption, align='C')
-        y_caption_end = pdf.get_y()
-
-        # Box-Rahmen
-        box_height = y_caption_end - y + box_pad
-        pdf.set_draw_color(200, 200, 200)
+        # Optional: Rahmen/Box um den Plot
+        box_height = img_h + 2 * box_pad
+        pdf.set_draw_color(210, 210, 210)
         pdf.rect(x, y, col_width, box_height)
 
         count += 1
@@ -129,7 +120,7 @@ def make_pdf(plots):
                 pdf.add_page()
                 y = pdf.get_y()
         else:
-            x = x + col_width + 10
+            x = x + col_width + 6
 
     pdf_output = pdf.output(dest='S').encode('latin1')
     return io.BytesIO(pdf_output)
@@ -486,56 +477,56 @@ if uploaded_file:
     plots = []
     if bytes_hist is not None:
         plots.append((
-            "Haeufigkeitsverteilung der Mood-Tageswerte",
+            "",
             bytes_hist,
-            "Das Histogramm zeigt die Verteilung der taeglichen Stimmungsmittelwerte in 0.5er-Schritten."
+            ""
         ))
     if bytes_mood is not None:
         plots.append((
-            "Mood Zeitverlauf",
+            "",
             bytes_mood,
-            "Die Clusteranalyse zeigt die Entwicklung der Mittelwerte der Tagesstimmung im Zeitverlauf."
+            ""
         ))
     if bytes_glaettung is not None:
         plots.append((
-            "Stimmungsglaettung",
+            "",
             bytes_glaettung,
-            "Auf dem Hintergrund der Mittelwerte der Tagesstimmung, machen die geglaetteten Kurven (Savitzky-Golay, LOESS) langfristige Trends und Veraenderungen sichtbar."
+            ""
         ))
     if bytes_warn is not None:
         plots.append((
-            "Varianz & Autokorrelation",
+            "",
             bytes_warn,
-            "Die Varianz zeigt Schwankungen der Stimmung, während die Autokorrelation die Aehnlichkeit aufeinanderfolgender Tage misst."
+            ""
         ))
     if bytes_entropie is not None:
         plots.append((
-            "Shannon & Approximate Entropie",
+            "",
             bytes_entropie,
-            "Die Shannon Entropie misst die Unvorhersehbarkeit und die Approximate Entropie die Komplexitaet der Stimmung."
+            ""
         ))
     if bytes_mixed is not None:
         plots.append((
-            "Intra-taegliche Mixed-State-Phasen",
+            "",
             bytes_mixed,
-            "Der Plot zeigt Tage mit intra-taeglichen Mixed States, d.h. mit einer Range >=2 Mood-Punkte oder einer Standardabweichung >=1 innerhalb eines Tages."
+            ""
         ))
     if bytes_heatmap is not None:
         plots.append((
-            "Label-Analyse (Heatmap)",
+            "",
             bytes_heatmap,
-            "Die Heatmap zeigt, wie oft ein Label in verschiedenen Mood-Stufen vorkommt."
+            ""
         ))
         
 
     if plots:
         st.markdown("### Bericht exportieren")
         st.download_button(
-            label="PDF-Bericht herunterladen",
-            data=make_pdf(plots),
-            file_name="stimmungsbericht.pdf",
-            mime="application/pdf"
-        )
+        label="Plots als PDF exportieren",
+        data=make_pdf(plots),
+        file_name="plotuebersicht.pdf",
+        mime="application/pdf"
+    )
 
 else:
     st.info("Bitte lade zuerst eine Daylio-Export-CSV hoch.")
