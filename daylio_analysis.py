@@ -82,7 +82,7 @@ def make_pdf(plots):
         with io.BytesIO() as buf_jpg:
             img.convert('RGB').save(buf_jpg, format='JPEG')
             buf_jpg.seek(0)
-            pdf.image(buf_jpg, w=170)
+            pdf.image(buf_jpg, w=170, name="plot.jpg")
         pdf.ln(2)
         pdf.set_font('Arial', '', 11)
         pdf.multi_cell(0, 8, caption)
