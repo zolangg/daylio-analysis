@@ -83,7 +83,6 @@ def make_pdf(plots):
         with io.BytesIO() as buf_jpg:
             img.convert('RGB').save(buf_jpg, format='JPEG')
             buf_jpg.seek(0)
-            # Speichere als temporäre Datei
             with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmpfile:
                 tmpfile.write(buf_jpg.read())
                 tmpfile.flush()
@@ -91,9 +90,8 @@ def make_pdf(plots):
         pdf.ln(2)
         pdf.set_font('Arial', '', 11)
         pdf.multi_cell(0, 8, caption)
-    out = io.BytesIO()
-    pdf.output(out)
-    out.seek(0)
+    pdf_output = pdf.output(dest='S').encode('latin1')
+    out = io.BytesIO(pdf_output)
     return out
 
 st.set_page_config(layout="wide", page_title="Daylio Stimmungsanalyse")
