@@ -6,6 +6,7 @@ from scipy.signal import savgol_filter
 from statsmodels.nonparametric.smoothers_lowess import lowess
 from fpdf import FPDF
 from PIL import Image
+import tempfile
 import io
 
 
@@ -82,7 +83,11 @@ def make_pdf(plots):
         with io.BytesIO() as buf_jpg:
             img.convert('RGB').save(buf_jpg, format='JPEG')
             buf_jpg.seek(0)
-            pdf.image(buf_jpg, w=170, name="plot.jpg")
+            # Speichere als temporäre Datei
+            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmpfile:
+                tmpfile.write(buf_jpg.read())
+                tmpfile.flush()
+                pdf.image(tmpfile.name, w=170)
         pdf.ln(2)
         pdf.set_font('Arial', '', 11)
         pdf.multi_cell(0, 8, caption)
