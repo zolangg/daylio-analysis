@@ -75,7 +75,7 @@ def make_pdf(plots):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-    # Titel nur auf der ersten Seite
+    # Titel nur einmal, oben auf der ersten Seite
     pdf.set_font('Arial', 'B', 16)
     pdf.cell(0, 10, 'Daylio Stimmungsanalyse Bericht', ln=1, align='C')
     pdf.ln(8)
@@ -84,55 +84,53 @@ def make_pdf(plots):
     margin_x = 10
     x = margin_x
     y = pdf.get_y()
-    box_pad = 4  # Innenabstand im Kasten
+    box_pad = 6  # Innenabstand im Kasten
+    img_max_h = 55  # Maximale Bildhöhe in mm
     count = 0
 
     for idx, (title, img_bytes, caption) in enumerate(plots):
-        box_y_start = y
-        box_x_start = x
+        box_x = x
+        box_y = y
 
-        # -- Titel --
-        pdf.set_xy(x + box_pad, y + box_pad)
-        pdf.set_font('Arial', 'B', 10)
-        pdf.multi_cell(col_width - 2 * box_pad, 6, title, align='C')
-        y_title_end = pdf.get_y()
-
-        # -- Bild --
+        # -- Bild vorbereiten --
         img = Image.open(img_bytes)
         aspect = img.height / img.width
         img_w = col_width - 2 * box_pad
-        img_h = img_w * aspect
+        img_h = min(img_max_h, img_w * aspect)
+        img_y = box_y + box_pad
+
+        img_x = x + box_pad + (img_w - img_w) / 2  # zentriert innerhalb der Box (bei Bedarf)
+
+        # -- Bild einfügen --
         with io.BytesIO() as buf_jpg:
             img.convert('RGB').save(buf_jpg, format='JPEG')
             buf_jpg.seek(0)
             with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmpfile:
                 tmpfile.write(buf_jpg.read())
                 tmpfile.flush()
-                pdf.image(tmpfile.name, x=x + box_pad, y=y_title_end, w=img_w, h=img_h)
-        y_img_end = y_title_end + img_h
+                pdf.image(tmpfile.name, x=img_x, y=img_y, w=img_w, h=img_h)
 
-        # -- Caption --
-        pdf.set_xy(x + box_pad, y_img_end + 2)
+        # -- Caption unter dem Bild --
+        pdf.set_xy(x + box_pad, img_y + img_h + 3)
         pdf.set_font('Arial', '', 9)
-        pdf.multi_cell(col_width - 2 * box_pad, 5, caption, align='L')
+        pdf.multi_cell(col_width - 2 * box_pad, 5, caption, align='C')
         y_caption_end = pdf.get_y()
 
-        # -- Rahmen/Kasten --
-        box_h = y_caption_end - y + box_pad
-        pdf.set_draw_color(180, 180, 180)
-        pdf.rect(x, y, col_width, box_h)
+        # -- Box-Rahmen zeichnen --
+        box_height = y_caption_end - y + box_pad
+        pdf.set_draw_color(200, 200, 200)
+        pdf.rect(x, y, col_width, box_height)
 
         # -- Zeilen-/Spaltenlogik --
         count += 1
         if count % 2 == 0:
-            y = max(pdf.get_y(), y + box_h + 4)
+            y = y + box_height + 5  # Abstand zur nächsten Zeile
             x = margin_x
             if y + 40 > 270:  # Seitenumbruch
                 pdf.add_page()
                 y = pdf.get_y()
         else:
-            x += col_width + 10
-            # y bleibt gleich
+            x = x + col_width + 10  # Abstand zur nächsten Spalte
 
     pdf_output = pdf.output(dest='S').encode('latin1')
     return io.BytesIO(pdf_output)
@@ -497,37 +495,37 @@ if uploaded_file:
         plots.append((
             "Mood Zeitverlauf",
             bytes_mood,
-            "Der Verlauf zeigt die Entwicklung der Stimmungsmittelwerte im Zeitverlauf."
+            "Die Clusteranalyse zeigt die Entwicklung der Mittelwerte der Tagesstimmung im Zeitverlauf."
         ))
     if bytes_glaettung is not None:
         plots.append((
             "Stimmungsglaettung",
             bytes_glaettung,
-            "Die geglaetteten Kurven (Savitzky-Golay, LOESS) machen langfristige Trends und Veraenderungen sichtbar."
+            "Auf dem Hintergrund der Mittelwerte der Tagesstimmung, machen die geglaetteten Kurven (Savitzky-Golay, LOESS) langfristige Trends und Veraenderungen sichtbar."
         ))
     if bytes_warn is not None:
         plots.append((
             "Varianz & Autokorrelation",
             bytes_warn,
-            "Varianz zeigt Schwankungen der Stimmung, Autokorrelation misst die Aehnlichkeit aufeinanderfolgender Tage."
+            "Die Varianz zeigt Schwankungen der Stimmung, während die Autokorrelation die Aehnlichkeit aufeinanderfolgender Tage misst."
         ))
     if bytes_entropie is not None:
         plots.append((
             "Shannon & Approximate Entropie",
             bytes_entropie,
-            "Die Entropiewerte messen die Unvorhersehbarkeit und Komplexitaet deiner Stimmung."
+            "Die Shannon Entropie misst die Unvorhersehbarkeit und die Approximate Entropie die Komplexitaet der Stimmung."
         ))
     if bytes_mixed is not None:
         plots.append((
             "Intra-taegliche Mixed-State-Phasen",
             bytes_mixed,
-            "Tage mit intra-taeglichen Mixed States (Range >=2 Mood-Punkte ODER Standardabweichung >=1 innerhalb eines Tages)."
+            "Der Plot zeigt Tage mit intra-taeglichen Mixed States, d.h. mit einer Range >=2 Mood-Punkte oder einer Standardabweichung >=1 innerhalb eines Tages."
         ))
     if bytes_heatmap is not None:
         plots.append((
             "Label-Analyse (Heatmap)",
             bytes_heatmap,
-            "Heatmap: Zeigt, wie oft ein Label in verschiedenen Mood-Stufen vorkommt."
+            "Die Heatmap zeigt, wie oft ein Label in verschiedenen Mood-Stufen vorkommt."
         ))
         
 
