@@ -79,48 +79,58 @@ def make_pdf(plots):
     pdf.cell(0, 10, 'Plotuebersicht', ln=1, align='C')
     pdf.ln(8)
 
-    col_width = 95  # Zwei Plots pro Zeile, maximaler Raum!
+    col_width = 95  # 2 Plots pro Zeile
     margin_x = 8
     x = margin_x
     y = pdf.get_y()
-    box_pad = 2
-    img_max_h = 85  # Bild kann jetzt richtig groß sein!
+    box_pad = 0
+    img_max_h = 85  # Maximale Bildhoehe
     count = 0
 
     for idx, (title, img_bytes, caption) in enumerate(plots):
-        box_x = x
-        box_y = y
-
-        img = Image.open(img_bytes)
-        aspect = img.height / img.width
-        img_w = col_width - 2 * box_pad
-        img_h = min(img_max_h, img_w * aspect)
-        img_y = box_y + box_pad
-        img_x = x + box_pad
-
-        # Bild einfuegen
-        with io.BytesIO() as buf_jpg:
-            img.convert('RGB').save(buf_jpg, format='JPEG')
-            buf_jpg.seek(0)
-            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmpfile:
-                tmpfile.write(buf_jpg.read())
-                tmpfile.flush()
-                pdf.image(tmpfile.name, x=img_x, y=img_y, w=img_w, h=img_h)
-
-        # Optional: Rahmen/Box um den Plot
-        box_height = img_h + 2 * box_pad
-        pdf.set_draw_color(210, 210, 210)
-        pdf.rect(x, y, col_width, box_height)
-
-        count += 1
-        if count % 2 == 0:
-            y = y + box_height + 5
-            x = margin_x
-            if y + img_max_h > 270:
-                pdf.add_page()
-                y = pdf.get_y()
+        # Wenn es die letzte Grafik ist (Heatmap), dann volle Seitenbreite
+        is_heatmap = (idx == len(plots)-1)  # Oder z.B. `title.lower().startswith("label")`
+        if is_heatmap:
+            img = Image.open(img_bytes)
+            full_width = 190
+            aspect = img.height / img.width
+            img_w = full_width
+            img_h = img_w * aspect
+            img_x = 10
+            img_y = y
+            with io.BytesIO() as buf_jpg:
+                img.convert('RGB').save(buf_jpg, format='JPEG')
+                buf_jpg.seek(0)
+                with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmpfile:
+                    tmpfile.write(buf_jpg.read())
+                    tmpfile.flush()
+                    # heatmap ganz unten, maximal breit
+                    pdf.image(tmpfile.name, x=img_x, y=img_y, w=img_w, h=img_h)
+            y += img_h + 10
         else:
-            x = x + col_width + 6
+            img = Image.open(img_bytes)
+            aspect = img.height / img.width
+            img_w = col_width
+            img_h = min(img_max_h, img_w * aspect)
+            img_x = x
+            img_y = y
+            with io.BytesIO() as buf_jpg:
+                img.convert('RGB').save(buf_jpg, format='JPEG')
+                buf_jpg.seek(0)
+                with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmpfile:
+                    tmpfile.write(buf_jpg.read())
+                    tmpfile.flush()
+                    pdf.image(tmpfile.name, x=img_x, y=img_y, w=img_w, h=img_h)
+
+            count += 1
+            if count % 2 == 0:
+                y = y + img_h + 8
+                x = margin_x
+                if y + img_max_h > 270:
+                    pdf.add_page()
+                    y = pdf.get_y()
+            else:
+                x = x + col_width + 6
 
     pdf_output = pdf.output(dest='S').encode('latin1')
     return io.BytesIO(pdf_output)
