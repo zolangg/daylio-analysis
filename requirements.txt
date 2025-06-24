@@ -6,3 +6,5 @@ scipy
 statsmodels
 networkx
 seaborn
+fpdf
+pillow
