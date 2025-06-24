@@ -489,12 +489,6 @@ if uploaded_file:
             "Heatmap: Zeigt, wie oft ein Label in verschiedenen Mood-Stufen vorkommt."
         ))
         
-    # Label-Heatmap nur anhängen, wenn vorhanden
-    if 'bytes_heatmap' in locals() and bytes_heatmap is not None:
-        plots.append((
-            "Label-Analyse (Heatmap)", bytes_heatmap, 
-            "Heatmap: Zeigt, wie oft ein Label in verschiedenen Mood-Stufen vorkommt."
-        ))
 
     if plots:
         st.markdown("### Bericht exportieren")
