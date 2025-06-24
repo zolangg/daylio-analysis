@@ -72,15 +72,15 @@ class PDF(FPDF):
         self.ln(8)
 
 def make_pdf(plots):
-    pdf = PDF()
+    pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
+    # Titel nur auf der ersten Seite
     pdf.set_font('Arial', 'B', 16)
     pdf.cell(0, 10, 'Daylio Stimmungsanalyse Bericht', ln=1, align='C')
     pdf.ln(8)
 
     col_width = 90    # Zwei Plots pro Zeile
-    row_height = 80   # Platz für Titel + Bild + Caption
     margin_x = 10
     x = margin_x
     y = pdf.get_y()
@@ -93,32 +93,38 @@ def make_pdf(plots):
         pdf.multi_cell(col_width, 6, title, align='C')
         y_title_end = pdf.get_y()
 
-        # Bild direkt unter Titel
+        # Bildhöhe dynamisch nach Seitenverhältnis skalieren
         img = Image.open(img_bytes)
+        aspect = img.height / img.width
+        img_w = col_width
+        img_h = img_w * aspect
+
         with io.BytesIO() as buf_jpg:
             img.convert('RGB').save(buf_jpg, format='JPEG')
             buf_jpg.seek(0)
             with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmpfile:
                 tmpfile.write(buf_jpg.read())
                 tmpfile.flush()
-                pdf.image(tmpfile.name, x=x, y=y_title_end, w=col_width)
-        y_img_end = y_title_end + 55  # ca. Bildhöhe
+                pdf.image(tmpfile.name, x=x, y=y_title_end, w=img_w, h=img_h)
 
-        # Caption unter dem Bild
-        pdf.set_xy(x, y_img_end)
+        # Caption direkt unter Bild
+        pdf.set_xy(x, y_title_end + img_h + 2)
         pdf.set_font('Arial', '', 9)
         pdf.multi_cell(col_width, 5, caption, align='L')
 
+        # Spalten-/Zeilenposition berechnen
         count += 1
         if count % 2 == 0:
-            y = max(pdf.get_y(), y_img_end + 15)
+            # neue Zeile
+            y = max(pdf.get_y(), y_title_end + img_h + 12)
             x = margin_x
-            if y + row_height > 270:
+            if y + 40 > 270:  # 40 = grobe Höhe für Bild+Text, ggf. anpassen
                 pdf.add_page()
                 y = pdf.get_y()
         else:
+            # nächste Spalte
             x += col_width + 10
-            y = y  # bleibt gleich
+            # y bleibt gleich
 
     pdf_output = pdf.output(dest='S').encode('latin1')
     return io.BytesIO(pdf_output)
