@@ -70,7 +70,6 @@ Lade deinen Daylio-Export (CSV) hoch und erhalte die wichtigsten Visualisierunge
 - Entropie-Maße als Stabilitätsindikator
 - Mixed-States
 - Heatmap Label-Analyse
-- Bericht als PDF herunterladen
 """)
 
 uploaded_file = st.file_uploader("Daylio CSV-Datei hochladen", type=["csv"])
