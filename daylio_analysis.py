@@ -75,33 +75,32 @@ def make_pdf(plots):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
-    # Titel nur einmal, oben auf der ersten Seite
     pdf.set_font('Arial', 'B', 16)
     pdf.cell(0, 10, 'Daylio Stimmungsanalyse Bericht', ln=1, align='C')
     pdf.ln(8)
 
-    col_width = 90    # Zwei Plots pro Zeile
-    margin_x = 10
+    col_width = 95    # 2 Plots pro Zeile, mehr Platz!
+    margin_x = 8
     x = margin_x
     y = pdf.get_y()
-    box_pad = 6  # Innenabstand im Kasten
-    img_max_h = 55  # Maximale Bildhöhe in mm
+    box_pad = 2
+    img_max_h = 75  # deutlich groesser
+    caption_fontsize = 8
     count = 0
 
     for idx, (title, img_bytes, caption) in enumerate(plots):
         box_x = x
         box_y = y
 
-        # -- Bild vorbereiten --
+        # Bild vorbereiten
         img = Image.open(img_bytes)
         aspect = img.height / img.width
         img_w = col_width - 2 * box_pad
         img_h = min(img_max_h, img_w * aspect)
         img_y = box_y + box_pad
+        img_x = x + box_pad
 
-        img_x = x + box_pad + (img_w - img_w) / 2  # zentriert innerhalb der Box (bei Bedarf)
-
-        # -- Bild einfügen --
+        # Bild einfuegen
         with io.BytesIO() as buf_jpg:
             img.convert('RGB').save(buf_jpg, format='JPEG')
             buf_jpg.seek(0)
@@ -110,27 +109,27 @@ def make_pdf(plots):
                 tmpfile.flush()
                 pdf.image(tmpfile.name, x=img_x, y=img_y, w=img_w, h=img_h)
 
-        # -- Caption unter dem Bild --
-        pdf.set_xy(x + box_pad, img_y + img_h + 3)
-        pdf.set_font('Arial', '', 9)
-        pdf.multi_cell(col_width - 2 * box_pad, 5, caption, align='C')
+        # Caption darunter, kleiner und ggf. weniger Zeilen
+        pdf.set_xy(x + box_pad, img_y + img_h + 1)
+        pdf.set_font('Arial', '', caption_fontsize)
+        short_caption = caption.split(".")[0] + "."  # Nur erster Satz
+        pdf.multi_cell(col_width - 2 * box_pad, 4, short_caption, align='C')
         y_caption_end = pdf.get_y()
 
-        # -- Box-Rahmen zeichnen --
+        # Box-Rahmen
         box_height = y_caption_end - y + box_pad
         pdf.set_draw_color(200, 200, 200)
         pdf.rect(x, y, col_width, box_height)
 
-        # -- Zeilen-/Spaltenlogik --
         count += 1
         if count % 2 == 0:
-            y = y + box_height + 5  # Abstand zur nächsten Zeile
+            y = y + box_height + 5
             x = margin_x
-            if y + 40 > 270:  # Seitenumbruch
+            if y + img_max_h > 270:
                 pdf.add_page()
                 y = pdf.get_y()
         else:
-            x = x + col_width + 10  # Abstand zur nächsten Spalte
+            x = x + col_width + 10
 
     pdf_output = pdf.output(dest='S').encode('latin1')
     return io.BytesIO(pdf_output)
