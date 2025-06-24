@@ -84,45 +84,53 @@ def make_pdf(plots):
     margin_x = 10
     x = margin_x
     y = pdf.get_y()
+    box_pad = 4  # Innenabstand im Kasten
     count = 0
 
     for idx, (title, img_bytes, caption) in enumerate(plots):
-        # Titel über dem Bild
-        pdf.set_xy(x, y)
+        box_y_start = y
+        box_x_start = x
+
+        # -- Titel --
+        pdf.set_xy(x + box_pad, y + box_pad)
         pdf.set_font('Arial', 'B', 10)
-        pdf.multi_cell(col_width, 6, title, align='C')
+        pdf.multi_cell(col_width - 2 * box_pad, 6, title, align='C')
         y_title_end = pdf.get_y()
 
-        # Bildhöhe dynamisch nach Seitenverhältnis skalieren
+        # -- Bild --
         img = Image.open(img_bytes)
         aspect = img.height / img.width
-        img_w = col_width
+        img_w = col_width - 2 * box_pad
         img_h = img_w * aspect
-
         with io.BytesIO() as buf_jpg:
             img.convert('RGB').save(buf_jpg, format='JPEG')
             buf_jpg.seek(0)
             with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmpfile:
                 tmpfile.write(buf_jpg.read())
                 tmpfile.flush()
-                pdf.image(tmpfile.name, x=x, y=y_title_end, w=img_w, h=img_h)
+                pdf.image(tmpfile.name, x=x + box_pad, y=y_title_end, w=img_w, h=img_h)
+        y_img_end = y_title_end + img_h
 
-        # Caption direkt unter Bild
-        pdf.set_xy(x, y_title_end + img_h + 2)
+        # -- Caption --
+        pdf.set_xy(x + box_pad, y_img_end + 2)
         pdf.set_font('Arial', '', 9)
-        pdf.multi_cell(col_width, 5, caption, align='L')
+        pdf.multi_cell(col_width - 2 * box_pad, 5, caption, align='L')
+        y_caption_end = pdf.get_y()
 
-        # Spalten-/Zeilenposition berechnen
+        # -- Rahmen/Kasten --
+        box_h = y_caption_end - y + box_pad
+        pdf.set_draw_color(180, 180, 180)
+        pdf.rect(x, y, col_width, box_h)
+
+        # -- Zeilen-/Spaltenlogik --
         count += 1
         if count % 2 == 0:
-            # neue Zeile
-            y = max(pdf.get_y(), y_title_end + img_h + 12)
+            y = max(pdf.get_y(), y + box_h + 4)
             x = margin_x
-            if y + 40 > 270:  # 40 = grobe Höhe für Bild+Text, ggf. anpassen
+            if y + 40 > 270:  # Seitenumbruch
                 pdf.add_page()
                 y = pdf.get_y()
         else:
-            # nächste Spalte
             x += col_width + 10
             # y bleibt gleich
 
