@@ -4,10 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 from statsmodels.nonparametric.smoothers_lowess import lowess
-from fpdf import FPDF
-from PIL import Image
-import tempfile
-import io
 
 
 # --- SCHWELLENWERT-FUNKTIONEN ---
@@ -62,59 +58,6 @@ def fig1_to_bytes(fig):
     fig.savefig(buf, format="png", bbox_inches='tight')
     buf.seek(0)
     return buf
-
-
-# --- PDF-KLASSE UND -FUNKTION ---
-class PDF(FPDF):
-    def header(self):
-        self.set_font('Arial', 'B', 16)
-        self.cell(0, 10, 'Daylio Stimmungsanalyse Bericht', ln=1, align='C')
-        self.ln(8)
-
-def make_pdf(plots):
-    pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=10)
-    pdf.add_page()
-    pdf.set_font('Arial', 'B', 16)
-    pdf.cell(0, 10, 'Plotuebersicht', ln=1, align='C')
-    pdf.ln(8)
-
-    col_width = 95   # immer 2 Plots pro Zeile
-    margin_x = 8
-    x = margin_x
-    y = pdf.get_y()
-    img_max_h = 85   # alle gleich hoch
-    count = 0
-
-    for idx, (title, img_bytes, caption) in enumerate(plots):
-        img = Image.open(img_bytes)
-        aspect = img.height / img.width
-        img_w = col_width
-        img_h = min(img_max_h, img_w * aspect)
-        img_x = x
-        img_y = y
-
-        # Bild einfuegen
-        with io.BytesIO() as buf_jpg:
-            img.convert('RGB').save(buf_jpg, format='JPEG')
-            buf_jpg.seek(0)
-            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmpfile:
-                tmpfile.write(buf_jpg.read())
-                tmpfile.flush()
-                pdf.image(tmpfile.name, x=img_x, y=img_y, w=img_w, h=img_h)
-
-        count += 1
-        if count % 2 == 0:
-            y = y + img_h + 8   # vertikaler Abstand zwischen Zeilen
-            x = margin_x
-            if y + img_max_h > 270:
-                pdf.add_page()
-                y = pdf.get_y()
-        else:
-            x = x + col_width + 6   # horizontaler Abstand zwischen Spalten
-
-    pdf_output = pdf.output(dest='S').encode('latin1')
-    return io.BytesIO(pdf_output)
 
 st.set_page_config(layout="wide", page_title="Daylio Stimmungsanalyse")
 st.title("Daylio Stimmungsanalyse")
@@ -211,15 +154,6 @@ if uploaded_file:
             f"**Approximate Entropy kritisch:** {akt_apen:.2f} > {apen_kritschwelle(entropy_win):.2f} (Unregelmäßiger Verlauf)")
     if warnungen:
         st.error("🚨 **KRITISCHE WARNUNG:**\n\n" + "\n\n".join(warnungen))
-        
-    # --- Initialisierung der Bytes-Variablen für alle Plots ---
-    bytes_hist = None
-    bytes_mood = None
-    bytes_glaettung = None
-    bytes_warn = None
-    bytes_entropie = None
-    bytes_mixed = None
-    bytes_heatmap = None
 
     # --- Häufigkeitsverteilung: Auswahl Gesamt / Jahr / Monat ---
     st.subheader("Häufigkeitsverteilung der Mood-Tageswerte")
@@ -462,62 +396,6 @@ if uploaded_file:
             st.info("Keine Daten für Heatmap vorhanden.")
     else:
         st.info("Keine activities-Spalte in den Daten gefunden.")
-        
-    # --- PDF-Export aller Grafiken ---
-        # --- PDF-Plotliste für den Bericht ---
-    plots = []
-    if bytes_hist is not None:
-        plots.append((
-            "",
-            bytes_hist,
-            ""
-        ))
-    if bytes_mood is not None:
-        plots.append((
-            "",
-            bytes_mood,
-            ""
-        ))
-    if bytes_glaettung is not None:
-        plots.append((
-            "",
-            bytes_glaettung,
-            ""
-        ))
-    if bytes_warn is not None:
-        plots.append((
-            "",
-            bytes_warn,
-            ""
-        ))
-    if bytes_entropie is not None:
-        plots.append((
-            "",
-            bytes_entropie,
-            ""
-        ))
-    if bytes_mixed is not None:
-        plots.append((
-            "",
-            bytes_mixed,
-            ""
-        ))
-    if bytes_heatmap is not None:
-        plots.append((
-            "",
-            bytes_heatmap,
-            ""
-        ))
-        
-
-    if plots:
-        st.markdown("### Bericht exportieren")
-        st.download_button(
-        label="Plots als PDF exportieren",
-        data=make_pdf(plots),
-        file_name="plotuebersicht.pdf",
-        mime="application/pdf"
-    )
 
 else:
     st.info("Bitte lade zuerst eine Daylio-Export-CSV hoch.")
