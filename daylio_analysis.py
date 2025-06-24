@@ -4,6 +4,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 from statsmodels.nonparametric.smoothers_lowess import lowess
+from fpdf import FPDF
+from PIL import Image
+import io
 
 
 # --- SCHWELLENWERT-FUNKTIONEN ---
@@ -60,16 +63,46 @@ def fig1_to_bytes(fig):
     return buf
 
 
+# --- PDF-KLASSE UND -FUNKTION ---
+class PDF(FPDF):
+    def header(self):
+        self.set_font('Arial', 'B', 16)
+        self.cell(0, 10, 'Daylio Stimmungsanalyse Bericht', ln=1, align='C')
+        self.ln(8)
+
+def make_pdf(plots):
+    pdf = PDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    for title, img_bytes, caption in plots:
+        pdf.add_page()
+        pdf.set_font('Arial', 'B', 14)
+        pdf.multi_cell(0, 10, title)
+        pdf.ln(2)
+        img = Image.open(img_bytes)
+        with io.BytesIO() as buf_jpg:
+            img.convert('RGB').save(buf_jpg, format='JPEG')
+            buf_jpg.seek(0)
+            pdf.image(buf_jpg, w=170)
+        pdf.ln(2)
+        pdf.set_font('Arial', '', 11)
+        pdf.multi_cell(0, 8, caption)
+    out = io.BytesIO()
+    pdf.output(out)
+    out.seek(0)
+    return out
+
 st.set_page_config(layout="wide", page_title="Daylio Stimmungsanalyse")
 st.title("Daylio Stimmungsanalyse")
 
 st.write("""
 Lade deinen Daylio-Export (CSV) hoch und erhalte die wichtigsten Visualisierungen:
-- Häufigkeitsverteilung und Mood Zeitverlauf
+- Häufigkeitsverteilung und Mood Zeitverlauf (zeitlich filterbar)
 - Stimmungsglättung (Savitzky-Golay, LOESS)
 - Rolling Varianz & Autokorrelation (Frühwarnsignale)
 - Entropie-Maße als Stabilitätsindikator
-- Identifikation von Tagen mit intra-täglichen Mixed States (keine Inter-Mixed, kein Markov)
+- Mixed-States
+- Heatmap Label-Analyse
+- Bericht als PDF herunterladen
 """)
 
 uploaded_file = st.file_uploader("Daylio CSV-Datei hochladen", type=["csv"])
@@ -388,5 +421,36 @@ if uploaded_file:
             st.info("Keine Daten für Heatmap vorhanden.")
     else:
         st.info("Keine activities-Spalte in den Daten gefunden.")
+        
+    # --- PDF-Export aller Grafiken ---
+    plots = [
+        ("Häufigkeitsverteilung der Mood-Tageswerte", bytes_hist, 
+         "Das Histogramm zeigt die Verteilung der täglichen Stimmungsmittelwerte in 0.5er-Schritten."),
+        ("Mood Zeitverlauf", bytes_mood, 
+         "Der Verlauf zeigt die Entwicklung der Stimmungsmittelwerte im Zeitverlauf."),
+        ("Stimmungsglättung", bytes_glaettung,
+         "Die geglätteten Kurven (Savitzky-Golay, LOESS) machen langfristige Trends sichtbar."),
+        ("Varianz & Autokorrelation", bytes_warn,
+         "Varianz zeigt Schwankungen der Stimmung, Autokorrelation misst Ähnlichkeit aufeinanderfolgender Tage."),
+        ("Shannon & Approximate Entropie", bytes_entropie,
+         "Die Entropiewerte messen die Unvorhersehbarkeit und Komplexität deiner Stimmung."),
+        ("Intra-tägliche Mixed-State-Phasen", bytes_mixed,
+         "Tage mit intra-täglichen Mixed States (Range ≥2 Mood-Punkte ODER Standardabweichung ≥1) innerhalb eines Tages."),
+    ]
+    # Label-Heatmap nur anhängen, wenn vorhanden
+    if 'bytes_heatmap' in locals() and bytes_heatmap is not None:
+        plots.append((
+            "Label-Analyse (Heatmap)", bytes_heatmap, 
+            "Heatmap: Zeigt, wie oft ein Label in verschiedenen Mood-Stufen vorkommt."
+        ))
+
+    st.markdown("### Bericht exportieren")
+    st.download_button(
+        label="PDF-Bericht herunterladen",
+        data=make_pdf(plots),
+        file_name="stimmungsbericht.pdf",
+        mime="application/pdf"
+    )
+
 else:
-    st.info("Keine activities-Spalte in den Daten gefunden.")
+    st.info("Bitte lade zuerst eine Daylio-Export-CSV hoch.")
