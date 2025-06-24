@@ -74,11 +74,20 @@ class PDF(FPDF):
 def make_pdf(plots):
     pdf = PDF()
     pdf.set_auto_page_break(auto=True, margin=15)
-    for title, img_bytes, caption in plots:
-        pdf.add_page()
-        pdf.set_font('Arial', 'B', 14)
-        pdf.multi_cell(0, 10, title)
-        pdf.ln(2)
+    pdf.add_page()
+    pdf.set_font('Arial', 'B', 16)
+    pdf.cell(0, 10, 'Daylio Stimmungsanalyse Bericht', ln=1, align='C')
+    pdf.ln(5)
+
+    col_width = 90  # mm, 2 Bilder pro Zeile
+    row_height = 70  # mm, Bild plus Titel
+
+    x_start = 10
+    y = pdf.get_y()
+    x = x_start
+    count = 0
+
+    for idx, (title, img_bytes, caption) in enumerate(plots):
         img = Image.open(img_bytes)
         with io.BytesIO() as buf_jpg:
             img.convert('RGB').save(buf_jpg, format='JPEG')
@@ -86,12 +95,25 @@ def make_pdf(plots):
             with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmpfile:
                 tmpfile.write(buf_jpg.read())
                 tmpfile.flush()
-                pdf.image(tmpfile.name, w=170)
-        pdf.ln(2)
-        pdf.set_font('Arial', '', 11)
-        pdf.multi_cell(0, 8, caption)
-    pdf_output = pdf.output(dest='S').encode('latin1')
-    out = io.BytesIO(pdf_output)
+                pdf.image(tmpfile.name, x=x, y=y, w=col_width)
+        # Titel unter das Bild
+        pdf.set_xy(x, y + col_width * 0.65)
+        pdf.set_font('Arial', 'B', 10)
+        pdf.multi_cell(col_width, 6, title, align='C')
+        count += 1
+        if count % 2 == 0:
+            y += row_height
+            x = x_start
+        else:
+            x += col_width + 5  # kleine Lücke zwischen Spalten
+
+        # Nach 6 Bildern Seite umbrechen (optional)
+        if count % 6 == 0 and idx != len(plots) - 1:
+            pdf.add_page()
+            y = pdf.get_y()
+            x = x_start
+
+    out = io.BytesIO(pdf.output(dest='S').encode('latin1'))
     return out
 
 st.set_page_config(layout="wide", page_title="Daylio Stimmungsanalyse")
