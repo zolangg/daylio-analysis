@@ -22,11 +22,17 @@ THRESHOLDS = {
     'apen': {'warn': (0.5, 0.001), 'kritisch': (0.7, 0.0015)},
 }
 
-# Zentrale Farbpalette
+# Zentrale Farbpalette (Thema: Warm, angelehnt an Heatmap)
 COLORS = {
     "depressive_bg": "#D6EAF8", "euthym_bg": "#E8F8F5", "manic_bg": "#FEF9E7",
-    "critical_marker": "#e74c3c", "main_line": "#1f77b4", "secondary_line": "#ff7f0e",
-    "accent_purple": "#9467bd", "accent_red": "#d62728", "grid": "#d3d3d3"
+    "critical_marker": "#e41a1c", # Starkes Rot
+    "main_line": "#ff7f00",      # Orange
+    "secondary_line": "#e31a1c", # Ein anderes Rot
+    "accent_1": "#f781bf",       # Pink/Lila
+    "accent_2": "#a65628",       # Braun
+    "grid": "#d3d3d3",
+    "neutral_text": "#404040",
+    "neutral_dots": "lightgray"
 }
 
 # --- KERNFUNKTIONEN (unverändert) ---
@@ -93,11 +99,11 @@ def style_plot(ax: plt.Axes):
     ax.spines['right'].set_visible(False)
     ax.spines['left'].set_color(COLORS['grid'])
     ax.spines['bottom'].set_color(COLORS['grid'])
-    
+
 def add_mood_zones(ax: plt.Axes):
-    ax.axhspan(1, 2.5, facecolor=COLORS['depressive_bg'], alpha=0.6, zorder=-1)
-    ax.axhspan(2.5, 3.5, facecolor=COLORS['euthym_bg'], alpha=0.7, zorder=-1)
-    ax.axhspan(3.5, 5, facecolor=COLORS['manic_bg'], alpha=0.6, zorder=-1)
+    ax.axhspan(1, 2.5, facecolor=COLORS['depressive_bg'], alpha=0.5, zorder=-1)
+    ax.axhspan(2.5, 3.5, facecolor=COLORS['euthym_bg'], alpha=0.6, zorder=-1)
+    ax.axhspan(3.5, 5, facecolor=COLORS['manic_bg'], alpha=0.5, zorder=-1)
 
 def fig_to_bytes(fig: plt.Figure) -> bytes:
     buf = io.BytesIO()
@@ -105,14 +111,14 @@ def fig_to_bytes(fig: plt.Figure) -> bytes:
     buf.seek(0)
     return buf
 
-# --- ÜBERARBEITETE PLOT-FUNKTIONEN MIT NEUEM STIL ---
+# --- ÜBERARBEITETE PLOT-FUNKTIONEN MIT NEUEM STIL & SICHTBARKEIT ---
 
 def plot_histogram(df_hist: pd.DataFrame, title: str):
     fig, ax = plt.subplots(figsize=(8, 4))
     bins = np.arange(1, 5.6, 0.5)
     hist_values, _ = np.histogram(df_hist['Stimmungswert'].dropna(), bins=bins)
     
-    bar_colors = plt.cm.viridis_r(np.linspace(0.1, 0.9, len(bins)-1))
+    bar_colors = plt.cm.YlOrRd(np.linspace(0.4, 0.8, len(bins)-1))
     ax.bar(bins[:-1] + 0.25, hist_values, width=0.45, color=bar_colors, edgecolor='white', linewidth=1)
     
     style_plot(ax)
@@ -128,8 +134,12 @@ def plot_mood_timeseries(df: pd.DataFrame):
     fig, ax = plt.subplots(figsize=(14, 5))
     add_mood_zones(ax)
     
-    ax.plot(df['Datum'], df['Stimmungswert'], color='darkgray', alpha=0.6, linewidth=1, zorder=1, label='Verlauf')
-    sc = ax.scatter(df['Datum'], df['Stimmungswert'], c=df['Stimmungswert'], cmap='viridis', s=40, zorder=2, edgecolors='white', linewidth=0.5)
+    # Farbverlauf basierend auf Stimmungswert
+    cmap = plt.cm.get_cmap('YlOrRd')
+    colors = cmap( (df['Stimmungswert'] - 1) / 4 )
+    
+    ax.plot(df['Datum'], df['Stimmungswert'], color='gray', alpha=0.3, linewidth=1, zorder=1)
+    ax.scatter(df['Datum'], df['Stimmungswert'], c=colors, s=40, zorder=2, edgecolors='white', linewidth=0.5)
     
     style_plot(ax)
     ax.set_title("Stimmungsverlauf mit Phasen-Zonen")
@@ -143,9 +153,11 @@ def plot_smoothing(df: pd.DataFrame):
     fig, ax = plt.subplots(figsize=(12, 5))
     add_mood_zones(ax)
     
-    ax.plot(df['Datum'], df['Stimmungswert'], color='lightgray', alpha=0.5, label="Tagesmittel (roh)", marker='.', linestyle='None')
-    ax.plot(df['Datum'], df['SG_Smooth'], color=COLORS['secondary_line'], linewidth=2.5, label="Savitzky-Golay Trend")
-    ax.plot(df['Datum'], df['LOESS_Smooth'], color=COLORS['main_line'], linewidth=2.5, label="LOESS Trend")
+    # Tägliche Mittelwerte als sichtbare Punkte im Hintergrund
+    ax.scatter(df['Datum'], df['Stimmungswert'], color=COLORS['neutral_dots'], alpha=0.6, label="Tagesmittel (roh)", s=15, zorder=1)
+    
+    ax.plot(df['Datum'], df['SG_Smooth'], color=COLORS['secondary_line'], linewidth=2.5, label="Savitzky-Golay Trend", zorder=3)
+    ax.plot(df['Datum'], df['LOESS_Smooth'], color=COLORS['main_line'], linewidth=2.5, label="LOESS Trend", zorder=4)
     
     style_plot(ax)
     ax.set_title("Geglättete Stimmungstrends")
@@ -159,14 +171,14 @@ def plot_smoothing(df: pd.DataFrame):
 def plot_early_warning_signals(df: pd.DataFrame, win: int):
     fig, ax = plt.subplots(figsize=(12, 5))
     
-    ax.plot(df['Datum'], df['Varianz'], color=COLORS['secondary_line'], label=f'Varianz ({win} Tage)')
-    ax.fill_between(df['Datum'], df['Varianz'], color=COLORS['secondary_line'], alpha=0.2)
-    ax.set_ylabel("Varianz", color=COLORS['secondary_line'])
+    ax.plot(df['Datum'], df['Varianz'], color=COLORS['main_line'], label=f'Varianz ({win} Tage)')
+    ax.fill_between(df['Datum'], df['Varianz'], color=COLORS['main_line'], alpha=0.2)
+    ax.set_ylabel("Varianz", color=COLORS['main_line'])
     
     ax2 = ax.twinx()
-    ax2.plot(df['Datum'], df['Autokorr'], color=COLORS['main_line'], label=f'Autokorrelation ({win} Tage)')
-    ax2.fill_between(df['Datum'], df['Autokorr'], color=COLORS['main_line'], alpha=0.2)
-    ax2.set_ylabel("Autokorrelation", color=COLORS['main_line'])
+    ax2.plot(df['Datum'], df['Autokorr'], color=COLORS['secondary_line'], label=f'Autokorrelation ({win} Tage)')
+    ax2.fill_between(df['Datum'], df['Autokorr'], color=COLORS['secondary_line'], alpha=0.2)
+    ax2.set_ylabel("Autokorrelation", color=COLORS['secondary_line'])
     
     style_plot(ax)
     ax.set_title("Frühwarnsignale: Varianz & Autokorrelation")
@@ -184,10 +196,10 @@ def plot_early_warning_signals(df: pd.DataFrame, win: int):
 def plot_entropy(df: pd.DataFrame, entropy_win: int):
     fig, ax = plt.subplots(figsize=(12, 5))
     
-    ax.plot(df['Datum'], df['Shannon Entropy'], color=COLORS['accent_purple'], label=f'Shannon Entropie ({entropy_win} Tage)')
-    ax.fill_between(df['Datum'], df['Shannon Entropy'], color=COLORS['accent_purple'], alpha=0.2)
-    ax.plot(df['Datum'], df['Approximate Entropy'], color=COLORS['accent_red'], label=f'Approximate Entropie ({entropy_win} Tage)')
-    ax.fill_between(df['Datum'], df['Approximate Entropy'], color=COLORS['accent_red'], alpha=0.2)
+    ax.plot(df['Datum'], df['Shannon Entropy'], color=COLORS['accent_2'], label=f'Shannon Entropie ({entropy_win} Tage)')
+    ax.fill_between(df['Datum'], df['Shannon Entropy'], color=COLORS['accent_2'], alpha=0.2)
+    ax.plot(df['Datum'], df['Approximate Entropy'], color=COLORS['accent_1'], label=f'Approximate Entropie ({entropy_win} Tage)')
+    ax.fill_between(df['Datum'], df['Approximate Entropy'], color=COLORS['accent_1'], alpha=0.2)
     
     style_plot(ax)
     ax.set_title("Stabilitätsanalyse: Entropie")
@@ -205,7 +217,10 @@ def plot_mixed_states(df_intraday: pd.DataFrame):
     daily_means = [np.mean(m) for m in df_intraday['Mood_List']]
     mixed_days_mask = df_intraday['Mixed_IntraDay']
     
-    ax.plot(df_intraday['Datum'], daily_means, color='gray', label='Tagesmittelwert', marker='.', linestyle='--', alpha=0.6)
+    # Alle Tage als verbundene, graue Punkte
+    ax.plot(df_intraday['Datum'], daily_means, color='gray', marker='.', linestyle='-', alpha=0.6, label='Tagesmittelwert')
+    
+    # Kritische Tage als große, rote Punkte darüber
     ax.scatter(df_intraday['Datum'][mixed_days_mask], np.array(daily_means)[mixed_days_mask], color=COLORS['critical_marker'], label='Hohe intra-tägliche Schwankung', s=80, zorder=5, edgecolors='black', linewidth=1)
     
     style_plot(ax)
@@ -243,7 +258,7 @@ def plot_label_heatmap(df_raw: pd.DataFrame):
     with st.expander("Interpretation"):
         st.caption("""**Was es zeigt:** Wie oft eine Aktivität bei einer Stimmung auftrat. **Warum es wichtig ist:** Hilft, Trigger oder hilfreiche Bewältigungsstrategien zu identifizieren.""")
         
-# --- STREAMLIT HAUPTANWENDUNG (Struktur exakt beibehalten) ---
+# --- STREAMLIT HAUPTANWENDUNG ---
 def main():
     st.title("Daylio Stimmungsanalyse")
     st.write("Laden Sie Ihren Daylio-Export (CSV) hoch, um Visualisierungen und Frühwarnsignale für Ihre Stimmungsdynamik zu erhalten.")
@@ -267,9 +282,9 @@ def main():
         if not pd.isna(last['Approximate Entropy']) and last['Approximate Entropy'] > get_threshold('apen', entropy_win, 'kritisch'): warnings.append(f"**Approximate Entropy kritisch:** {last['Approximate Entropy']:.2f}")
         if warnings: st.error("🚨 **KRITISCHE WARNUNG (basierend auf dem letzten Wert):**\n\n" + "\n\n".join(warnings))
 
-        st.subheader(f"Häufigkeitsverteilung der Stimmung")
+        st.subheader("Häufigkeitsverteilung der Stimmung")
         filter_art = st.selectbox("Zeitfenster für Verteilung:", ["Gesamter Zeitraum", "Jahresweise", "Monatsweise"], key="dist_filter")
-        df_hist, jahr, monat = df_daily.copy(), None, None
+        df_hist = df_daily.copy()
         title = "Häufigkeitsverteilung (Gesamter Zeitraum)"
         if filter_art == "Jahresweise":
             jahre = sorted(df_daily['Datum'].dt.year.unique())
@@ -288,21 +303,19 @@ def main():
         st.subheader("Tagesmittelwerte der Stimmung im Zeitverlauf")
         plot_mood_timeseries(df_daily)
         
-        st.subheader("Geglättete Stimmungstrends (LOESS & Savitzky-Golay)")
+        st.subheader("Geglättete Stimmungstrends")
         plot_smoothing(df_daily)
         
-        st.subheader("Frühwarnsignale: Rollierende Varianz & Autokorrelation")
+        st.subheader("Frühwarnsignale & Stabilität")
         plot_early_warning_signals(df_daily, win)
-        
-        st.subheader("Stabilitätsanalyse: Shannon- & Approximate-Entropie")
         plot_entropy(df_daily, entropy_win)
         
-        st.subheader("Analyse intra-täglicher Stimmungsschwankungen (Mixed States)")
+        st.subheader("Analyse intra-täglicher Stimmungsschwankungen")
         plot_mixed_states(df_intraday)
         n_intra = int(df_intraday['Mixed_IntraDay'].sum())
         st.metric(label="Tage mit hoher intra-täglicher Varianz", value=f"{n_intra}", delta=f"{n_intra/len(df_intraday):.1%} der Tage")
         
-        st.subheader("Analyse der Aktivitäten-Label (Heatmap)")
+        st.subheader("Analyse der Aktivitäten-Label")
         plot_label_heatmap(df_raw)
 
     else:
